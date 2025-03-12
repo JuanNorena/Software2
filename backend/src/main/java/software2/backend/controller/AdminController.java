@@ -82,27 +82,42 @@ public class AdminController {
      */
     @PostMapping("/empleados")
     public ResponseEntity<?> crearEmpleado(@RequestBody Empleado empleado) {
-        // Obtener la empresa (asumiendo que hay una sola empresa en el sistema)
-        Empresa empresa = empresaRepository.findAll().stream().findFirst()
-                .orElseThrow(() -> new RuntimeException("No hay empresas registradas"));
-        
-        // Asignar empresa al empleado
-        empresa.agregarEmpleado(empleado);
-        
-        // Guardar empleado
-        Empleado empleadoGuardado = empleadoRepository.save(empleado);
-        empresaRepository.save(empresa);
-        
-        // Crear usuario para el empleado
-        Usuario usuario = new Usuario();
-        usuario.setUsername(empleado.getRut()); // Usar RUT como nombre de usuario
-        usuario.setPassword(passwordEncoder.encode("password")); // Contraseña por defecto
-        usuario.setRol("EMPLEADO");
-        usuario.setEmpleado(empleadoGuardado);
-        
-        usuarioRepository.save(usuario);
-        
-        return ResponseEntity.ok(empleadoGuardado);
+        try {
+            // Validar datos del empleado
+            if (empleado.getRut() == null || empleado.getRut().trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("El RUT es obligatorio");
+            }
+            
+            // Verificar si ya existe un empleado con ese RUT
+            if (empleadoRepository.existsByRut(empleado.getRut())) {
+                return ResponseEntity.badRequest().body("Ya existe un empleado con ese RUT");
+            }
+            
+            // Obtener la empresa (asumiendo que hay una sola empresa en el sistema)
+            Empresa empresa = empresaRepository.findAll().stream().findFirst()
+                    .orElseThrow(() -> new RuntimeException("No hay empresas registradas"));
+            
+            // Asignar empresa al empleado
+            empresa.agregarEmpleado(empleado);
+            
+            // Guardar empleado
+            Empleado empleadoGuardado = empleadoRepository.save(empleado);
+            empresaRepository.save(empresa);
+            
+            // Crear usuario para el empleado
+            Usuario usuario = new Usuario();
+            usuario.setUsername(empleado.getRut()); // Usar RUT como nombre de usuario
+            usuario.setPassword(passwordEncoder.encode("password")); // Contraseña por defecto
+            usuario.setRol("EMPLEADO");
+            usuario.setEmpleado(empleadoGuardado);
+            usuario.setEnabled(true);
+            
+            usuarioRepository.save(usuario);
+            
+            return ResponseEntity.ok(empleadoGuardado);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error al crear empleado: " + e.getMessage());
+        }
     }
     
     /**
@@ -424,5 +439,49 @@ public class AdminController {
         resultado.put("url", "/api/admin/reportes/descargar/" + nombreReporte);
         
         return ResponseEntity.ok(resultado);
+    }
+    
+    /**
+     * Endpoint para obtener el detalle de una liquidación específica
+     * @param id ID de la liquidación
+     * @return Liquidación de sueldo
+     */
+    @GetMapping("/liquidaciones/{id}")
+    public ResponseEntity<?> obtenerDetalleLiquidacion(@PathVariable String id) {
+        try {
+            LiquidacionSueldo liquidacion = liquidacionSueldoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Liquidación no encontrada"));
+            
+            return ResponseEntity.ok(liquidacion);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error al obtener la liquidación: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Endpoint para imprimir una liquidación individual
+     * @param id ID de la liquidación a imprimir
+     * @return URL del PDF generado
+     */
+    @GetMapping("/liquidaciones/{id}/imprimir")
+    public ResponseEntity<?> imprimirLiquidacion(@PathVariable String id) {
+        try {
+            LiquidacionSueldo liquidacion = liquidacionSueldoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Liquidación no encontrada"));
+            
+            // Simulación de generación de PDF individual
+            String nombreArchivo = "Liquidacion_" + liquidacion.getEmpleado().getRut() + "_" + 
+                                  liquidacion.getFecha().getMonthValue() + "_" + 
+                                  liquidacion.getFecha().getYear() + ".pdf";
+            
+            Map<String, Object> resultado = new HashMap<>();
+            resultado.put("mensaje", "Liquidación generada con éxito");
+            resultado.put("nombreArchivo", nombreArchivo);
+            resultado.put("url", "/api/admin/liquidaciones/descargar/" + nombreArchivo);
+            
+            return ResponseEntity.ok(resultado);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error al generar la liquidación: " + e.getMessage());
+        }
     }
 }

@@ -40,16 +40,20 @@ public class RegistroAsistencia {
      */
     public double calcularHorasTrabajadas() {
         if (horaEntrada != null && horaSalida != null) {
-            int entradaMinutos = horaEntrada.getHour() * 60 + horaEntrada.getMinute();
-            int salidaMinutos = horaSalida.getHour() * 60 + horaSalida.getMinute();
+            // Convertir a segundos para mayor precisión
+            int entradaSegundos = horaEntrada.toSecondOfDay();
+            int salidaSegundos = horaSalida.toSecondOfDay();
             
             // Si la salida es antes que la entrada, asumimos que es del día siguiente
-            if (salidaMinutos < entradaMinutos) {
-                salidaMinutos += 24 * 60; // Añadimos 24 horas en minutos
+            if (salidaSegundos < entradaSegundos) {
+                salidaSegundos += 24 * 60 * 60; // Añadimos 24 horas en segundos
             }
             
-            double horasTrabajadas = (salidaMinutos - entradaMinutos) / 60.0;
-            return Math.round(horasTrabajadas * 100.0) / 100.0; // Redondear a 2 decimales
+            // Calcular la diferencia en horas con precisión
+            double horasTrabajadas = (salidaSegundos - entradaSegundos) / 3600.0;
+            
+            // Redondear a 2 decimales
+            return Math.round(horasTrabajadas * 100.0) / 100.0;
         }
         return 0.0;
     }

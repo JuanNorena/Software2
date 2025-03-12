@@ -41,11 +41,29 @@ public class EmpleadoController {
     /**
      * Obtiene el empleado autenticado actualmente
      * @return El empleado autenticado
+     * @throws RuntimeException si el usuario no tiene un empleado asociado
      */
     private Empleado getEmpleadoAutenticado() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        Usuario usuario = (Usuario) authentication.getPrincipal();
-        return usuario.getEmpleado();
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null) {
+                throw new RuntimeException("No hay usuario autenticado");
+            }
+            
+            Object principal = authentication.getPrincipal();
+            if (!(principal instanceof Usuario)) {
+                throw new RuntimeException("El usuario autenticado no es válido");
+            }
+            
+            Usuario usuario = (Usuario) principal;
+            if (usuario.getEmpleado() == null) {
+                throw new RuntimeException("El usuario no tiene un empleado asociado");
+            }
+            
+            return usuario.getEmpleado();
+        } catch (Exception e) {
+            throw new RuntimeException("Error al obtener el empleado autenticado: " + e.getMessage());
+        }
     }
     
     /**
@@ -54,8 +72,12 @@ public class EmpleadoController {
      */
     @GetMapping("/perfil")
     public ResponseEntity<?> obtenerPerfil() {
-        Empleado empleado = getEmpleadoAutenticado();
-        return ResponseEntity.ok(empleado);
+        try {
+            Empleado empleado = getEmpleadoAutenticado();
+            return ResponseEntity.ok(empleado);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error al obtener perfil: " + e.getMessage());
+        }
     }
     
     /**
@@ -215,5 +237,39 @@ public class EmpleadoController {
         }
         
         return ResponseEntity.ok(liquidacion);
+    }
+    
+    /**
+     * Endpoint para imprimir una liquidación
+     * @param id ID de la liquidación
+     * @return URL del PDF generado
+     */
+    @GetMapping("/liquidaciones/{id}/imprimir")
+    public ResponseEntity<?> imprimirLiquidacion(@PathVariable String id) {
+        try {
+            Empleado empleado = getEmpleadoAutenticado();
+            
+            LiquidacionSueldo liquidacion = liquidacionSueldoRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Liquidación no encontrada"));
+            
+            // Verificar que la liquidación pertenezca al empleado autenticado
+            if (!liquidacion.getEmpleado().getId().equals(empleado.getId())) {
+                return ResponseEntity.status(403).body("No tiene permiso para acceder a esta liquidación");
+            }
+            
+            // Simulación de generación de PDF
+            String nombreArchivo = "Liquidacion_" + empleado.getRut() + "_" + 
+                                  liquidacion.getFecha().getMonthValue() + "_" + 
+                                  liquidacion.getFecha().getYear() + ".pdf";
+            
+            Map<String, Object> resultado = new HashMap<>();
+            resultado.put("mensaje", "Liquidación generada con éxito");
+            resultado.put("nombreArchivo", nombreArchivo);
+            resultado.put("url", "/api/empleado/liquidaciones/descargar/" + nombreArchivo);
+            
+            return ResponseEntity.ok(resultado);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error al generar la liquidación: " + e.getMessage());
+        }
     }
 }

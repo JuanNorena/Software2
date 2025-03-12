@@ -46,34 +46,44 @@ public class AuthController {
      */
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
-        // Autenticar usuario
-        Authentication authentication = authenticationManager.authenticate(
-            new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword())
-        );
-        
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        
-        // Obtener usuario autenticado
-        Usuario usuario = (Usuario) authentication.getPrincipal();
-        
-        // Si es empleado, registrar entrada
-        if ("EMPLEADO".equals(usuario.getRol()) && usuario.getEmpleado() != null) {
-            registrarEntrada(usuario.getEmpleado());
+        try {
+            // Validar datos de entrada
+            if (loginRequest.getUsername() == null || loginRequest.getUsername().trim().isEmpty() ||
+                loginRequest.getPassword() == null || loginRequest.getPassword().trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("El nombre de usuario y la contraseña son obligatorios");
+            }
+            
+            // Autenticar usuario
+            Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword())
+            );
+            
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            
+            // Obtener usuario autenticado
+            Usuario usuario = (Usuario) authentication.getPrincipal();
+            
+            // Si es empleado, registrar entrada
+            if ("EMPLEADO".equals(usuario.getRol()) && usuario.getEmpleado() != null) {
+                registrarEntrada(usuario.getEmpleado());
+            }
+            
+            // Generar token JWT
+            String token = authService.generateToken(authentication);
+            
+            // Crear respuesta
+            LoginResponse response = new LoginResponse(
+                token,
+                usuario.getId(),
+                usuario.getUsername(),
+                usuario.getRol(),
+                usuario.getEmpleado() != null ? usuario.getEmpleado().getId() : null
+            );
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error de autenticación: " + e.getMessage());
         }
-        
-        // Generar token JWT
-        String token = authService.generateToken(authentication);
-        
-        // Crear respuesta
-        LoginResponse response = new LoginResponse(
-            token,
-            usuario.getId(),
-            usuario.getUsername(),
-            usuario.getRol(),
-            usuario.getEmpleado() != null ? usuario.getEmpleado().getId() : null
-        );
-        
-        return ResponseEntity.ok(response);
     }
     
     /**
