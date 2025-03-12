@@ -12,6 +12,10 @@ import org.springframework.stereotype.Service;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
+
 import software2.backend.model.Usuario;
 import software2.backend.repository.UsuarioRepository;
 
@@ -59,12 +63,15 @@ public class AuthService implements UserDetailsService {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtExpiration);
         
+        // Crear una clave segura a partir del secreto
+        SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+        
         return Jwts.builder()
                 .setSubject(usuario.getUsername())
                 .setIssuedAt(now)
                 .setExpiration(expiryDate)
                 .claim("rol", usuario.getRol())
-                .signWith(SignatureAlgorithm.HS512, jwtSecret)
+                .signWith(key)
                 .compact();
     }
     
@@ -75,7 +82,13 @@ public class AuthService implements UserDetailsService {
      */
     public boolean validateToken(String token) {
         try {
-            Jwts.parser().setSigningKey(jwtSecret).parseClaimsJws(token);
+            // Crear una clave segura a partir del secreto
+            SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+            
+            Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token);
             return true;
         } catch (Exception e) {
             return false;
@@ -88,8 +101,12 @@ public class AuthService implements UserDetailsService {
      * @return El nombre de usuario
      */
     public String getUsernameFromToken(String token) {
-        Claims claims = Jwts.parser()
-                .setSigningKey(jwtSecret)
+        // Crear una clave segura a partir del secreto
+        SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+        
+        Claims claims = Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
                 .parseClaimsJws(token)
                 .getBody();
         
