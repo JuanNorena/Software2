@@ -2,7 +2,6 @@ package software2.backend.service;
 
 import java.util.Date;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -11,11 +10,11 @@ import org.springframework.stereotype.Service;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 
+import software2.backend.config.JwtConfig;
 import software2.backend.model.Usuario;
 import software2.backend.repository.UsuarioRepository;
 
@@ -26,15 +25,11 @@ import software2.backend.repository.UsuarioRepository;
 public class AuthService implements UserDetailsService {
 
     private final UsuarioRepository usuarioRepository;
+    private final JwtConfig jwtConfig;
     
-    @Value("${jwt.secret:secretKey}")
-    private String jwtSecret;
-    
-    @Value("${jwt.expiration:86400000}")
-    private long jwtExpiration;
-    
-    public AuthService(UsuarioRepository usuarioRepository) {
+    public AuthService(UsuarioRepository usuarioRepository, JwtConfig jwtConfig) {
         this.usuarioRepository = usuarioRepository;
+        this.jwtConfig = jwtConfig;
     }
     
     /**
@@ -61,10 +56,10 @@ public class AuthService implements UserDetailsService {
         Usuario usuario = (Usuario) authentication.getPrincipal();
         
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + jwtExpiration);
+        Date expiryDate = new Date(now.getTime() + jwtConfig.getExpiration());
         
         // Crear una clave segura a partir del secreto
-        SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+        SecretKey key = Keys.hmacShaKeyFor(jwtConfig.getSecret().getBytes(StandardCharsets.UTF_8));
         
         return Jwts.builder()
                 .setSubject(usuario.getUsername())
@@ -83,7 +78,7 @@ public class AuthService implements UserDetailsService {
     public boolean validateToken(String token) {
         try {
             // Crear una clave segura a partir del secreto
-            SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+            SecretKey key = Keys.hmacShaKeyFor(jwtConfig.getSecret().getBytes(StandardCharsets.UTF_8));
             
             Jwts.parserBuilder()
                 .setSigningKey(key)
@@ -102,7 +97,7 @@ public class AuthService implements UserDetailsService {
      */
     public String getUsernameFromToken(String token) {
         // Crear una clave segura a partir del secreto
-        SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+        SecretKey key = Keys.hmacShaKeyFor(jwtConfig.getSecret().getBytes(StandardCharsets.UTF_8));
         
         Claims claims = Jwts.parserBuilder()
                 .setSigningKey(key)

@@ -1,7 +1,6 @@
 package software2.backend.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -304,8 +303,23 @@ public class AdminController {
                     .mapToDouble(RegistroAsistencia::getTotalHorasTrabajadas)
                     .sum();
             
-            // Calcular sueldo bruto (simplificado)
-            double sueldoBruto = empleado.getSueldoBase();
+            // Calcular sueldo bruto considerando las horas trabajadas
+            // El sueldo base se considera para una jornada completa (160 horas mensuales)
+            // Si trabaja más horas, se pagan horas extra; si trabaja menos, se paga proporcional
+            double sueldoBase = empleado.getSueldoBase();
+            double horasEstandar = 160.0; // Horas estándar mensuales
+            double sueldoBruto;
+            
+            if (horasTrabajadas <= horasEstandar) {
+                // Pago proporcional si trabajó menos de lo estándar
+                sueldoBruto = sueldoBase * (horasTrabajadas / horasEstandar);
+            } else {
+                // Sueldo base más horas extra con 50% adicional
+                double horasExtra = horasTrabajadas - horasEstandar;
+                double valorHoraNormal = sueldoBase / horasEstandar;
+                double valorHoraExtra = valorHoraNormal * 1.5;
+                sueldoBruto = sueldoBase + (horasExtra * valorHoraExtra);
+            }
             
             // Crear liquidación
             LiquidacionSueldo liquidacion = new LiquidacionSueldo();
