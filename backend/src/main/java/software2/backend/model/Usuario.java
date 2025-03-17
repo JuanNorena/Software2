@@ -2,6 +2,7 @@ package software2.backend.model;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
 
 import org.springframework.data.annotation.Id;
@@ -42,6 +43,9 @@ public class Usuario implements UserDetails {
     private boolean accountNonLocked = true;
     private boolean credentialsNonExpired = true;
     private boolean enabled = true;
+    
+    private String resetPasswordToken; // Token para recuperación de contraseña
+    private Date resetPasswordTokenExpiry; // Fecha de expiración del token
     
     // Relación con empleado (opcional, solo para usuarios con rol EMPLEADO)
     @JsonIgnore

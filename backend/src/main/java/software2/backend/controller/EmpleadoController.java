@@ -13,6 +13,8 @@ import software2.backend.model.Usuario;
 import software2.backend.repository.EmpleadoRepository;
 import software2.backend.repository.LiquidacionSueldoRepository;
 import software2.backend.repository.RegistroAsistenciaRepository;
+import software2.backend.dto.EmpleadoActualizacionRequest;
+import software2.backend.dto.EmpleadoResponse;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -80,6 +82,21 @@ public class EmpleadoController {
     }
     
     /**
+     * Endpoint para obtener la información del empleado autenticado (usando DTO)
+     * @return Información del empleado en formato DTO seguro
+     */
+    @GetMapping("/perfil/dto")
+    public ResponseEntity<?> obtenerPerfilDTO() {
+        try {
+            Empleado empleado = getEmpleadoAutenticado();
+            EmpleadoResponse respuesta = EmpleadoResponse.fromEmpleado(empleado);
+            return ResponseEntity.ok(respuesta);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error al obtener perfil: " + e.getMessage());
+        }
+    }
+    
+    /**
      * Endpoint para actualizar la información personal del empleado
      * @param empleadoActualizado Datos actualizados del empleado
      * @return Empleado actualizado
@@ -92,9 +109,55 @@ public class EmpleadoController {
         empleado.setNombre(empleadoActualizado.getNombre());
         empleado.setProfesion(empleadoActualizado.getProfesion());
         
+        // Actualizar email si se proporciona
+        if (empleadoActualizado.getEmail() != null && !empleadoActualizado.getEmail().trim().isEmpty()) {
+            // Verificar si el email ya está en uso
+            Empleado empleadoConEmail = empleadoRepository.findByEmail(empleadoActualizado.getEmail());
+            if (empleadoConEmail != null && !empleadoConEmail.getId().equals(empleado.getId())) {
+                return ResponseEntity.badRequest().body("El correo electrónico ya está en uso por otro empleado");
+            }
+            empleado.setEmail(empleadoActualizado.getEmail());
+        }
+        
         empleadoRepository.save(empleado);
         
         return ResponseEntity.ok(empleado);
+    }
+    
+    /**
+     * Endpoint para actualizar la información personal del empleado usando DTO
+     * @param actualizacionRequest DTO con datos actualizados del empleado
+     * @return Empleado actualizado en formato DTO
+     */
+    @PutMapping("/perfil/dto")
+    public ResponseEntity<?> actualizarPerfilConDTO(@RequestBody EmpleadoActualizacionRequest actualizacionRequest) {
+        Empleado empleado = getEmpleadoAutenticado();
+        
+        // Actualizar solo campos permitidos y si están presentes en la solicitud
+        if (actualizacionRequest.getNombre() != null) {
+            empleado.setNombre(actualizacionRequest.getNombre());
+        }
+        
+        if (actualizacionRequest.getProfesion() != null) {
+            empleado.setProfesion(actualizacionRequest.getProfesion());
+        }
+        
+        // Actualizar email si se proporciona
+        if (actualizacionRequest.getEmail() != null && !actualizacionRequest.getEmail().trim().isEmpty()) {
+            // Verificar si el email ya está en uso
+            Empleado empleadoConEmail = empleadoRepository.findByEmail(actualizacionRequest.getEmail());
+            if (empleadoConEmail != null && !empleadoConEmail.getId().equals(empleado.getId())) {
+                return ResponseEntity.badRequest().body("El correo electrónico ya está en uso por otro empleado");
+            }
+            empleado.setEmail(actualizacionRequest.getEmail());
+        }
+        
+        Empleado empleadoActualizado = empleadoRepository.save(empleado);
+        
+        // Convertir a DTO para la respuesta
+        EmpleadoResponse respuesta = EmpleadoResponse.fromEmpleado(empleadoActualizado);
+        
+        return ResponseEntity.ok(respuesta);
     }
     
     /**

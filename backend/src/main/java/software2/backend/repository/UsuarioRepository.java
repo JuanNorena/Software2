@@ -25,4 +25,11 @@ public interface UsuarioRepository extends MongoRepository<Usuario, String> {
      * @return true si existe, false en caso contrario
      */
     boolean existsByUsername(String username);
+    
+    /**
+     * Busca un usuario por su token de recuperación de contraseña
+     * @param resetPasswordToken El token de recuperación
+     * @return El usuario encontrado o null si no existe
+     */
+    Usuario findByResetPasswordToken(String resetPasswordToken);
 }

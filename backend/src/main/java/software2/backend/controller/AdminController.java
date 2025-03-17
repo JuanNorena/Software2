@@ -15,6 +15,9 @@ import software2.backend.repository.EmpresaRepository;
 import software2.backend.repository.LiquidacionSueldoRepository;
 import software2.backend.repository.RegistroAsistenciaRepository;
 import software2.backend.repository.UsuarioRepository;
+import software2.backend.dto.EmpleadoRegistroRequest;
+import software2.backend.dto.EmpleadoResponse;
+import software2.backend.dto.EmpleadoActualizacionRequest;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -22,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Controlador para manejar operaciones administrativas.
@@ -60,6 +64,19 @@ public class AdminController {
     }
     
     /**
+     * Endpoint para obtener todos los empleados (retorna DTO)
+     * @return Lista de empleados con datos seguros para mostrar
+     */
+    @GetMapping("/empleados/dto")
+    public ResponseEntity<?> obtenerEmpleadosDTO() {
+        List<Empleado> empleados = empleadoRepository.findAll();
+        List<EmpleadoResponse> respuesta = empleados.stream()
+            .map(EmpleadoResponse::fromEmpleado)
+            .collect(Collectors.toList());
+        return ResponseEntity.ok(respuesta);
+    }
+    
+    /**
      * Endpoint para obtener un empleado por su ID
      * @param id ID del empleado
      * @return Empleado encontrado
@@ -75,22 +92,43 @@ public class AdminController {
     }
     
     /**
-     * Endpoint para crear un nuevo empleado
-     * @param empleado Datos del empleado a crear
+     * Endpoint para crear un nuevo empleado usando DTO
+     * @param registroRequest DTO con datos del empleado y credenciales
      * @return Empleado creado
      */
-    @PostMapping("/empleados")
-    public ResponseEntity<?> crearEmpleado(@RequestBody Empleado empleado) {
+    @PostMapping("/empleados/registro")
+    public ResponseEntity<?> registrarEmpleado(@RequestBody EmpleadoRegistroRequest registroRequest) {
         try {
             // Validar datos del empleado
-            if (empleado.getRut() == null || empleado.getRut().trim().isEmpty()) {
+            if (registroRequest.getRut() == null || registroRequest.getRut().trim().isEmpty()) {
                 return ResponseEntity.badRequest().body("El RUT es obligatorio");
             }
             
+            // Validar email
+            if (registroRequest.getEmail() == null || registroRequest.getEmail().trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("El correo electrónico es obligatorio");
+            }
+            
             // Verificar si ya existe un empleado con ese RUT
-            if (empleadoRepository.existsByRut(empleado.getRut())) {
+            if (empleadoRepository.existsByRut(registroRequest.getRut())) {
                 return ResponseEntity.badRequest().body("Ya existe un empleado con ese RUT");
             }
+            
+            // Verificar si ya existe un empleado con ese email
+            Empleado empleadoExistente = empleadoRepository.findByEmail(registroRequest.getEmail());
+            if (empleadoExistente != null) {
+                return ResponseEntity.badRequest().body("Ya existe un empleado con ese correo electrónico");
+            }
+            
+            // Crear empleado desde el DTO
+            Empleado empleado = new Empleado();
+            empleado.setNombre(registroRequest.getNombre());
+            empleado.setRut(registroRequest.getRut());
+            empleado.setEmail(registroRequest.getEmail());
+            empleado.setFechaNacimiento(registroRequest.getFechaNacimiento());
+            empleado.setProfesion(registroRequest.getProfesion());
+            empleado.setCargo(registroRequest.getCargo());
+            empleado.setSueldoBase(registroRequest.getSueldoBase());
             
             // Obtener la empresa (asumiendo que hay una sola empresa en el sistema)
             Empresa empresa = empresaRepository.findAll().stream().findFirst()
@@ -105,8 +143,21 @@ public class AdminController {
             
             // Crear usuario para el empleado
             Usuario usuario = new Usuario();
-            usuario.setUsername(empleado.getRut()); // Usar RUT como nombre de usuario
-            usuario.setPassword(passwordEncoder.encode("password")); // Contraseña por defecto
+            
+            // Usar username proporcionado o RUT por defecto
+            String username = registroRequest.getUsername();
+            if (username == null || username.trim().isEmpty()) {
+                username = registroRequest.getRut();
+            }
+            
+            // Usar password proporcionado o "password" por defecto
+            String password = registroRequest.getPassword();
+            if (password == null || password.trim().isEmpty()) {
+                password = "password";
+            }
+            
+            usuario.setUsername(username);
+            usuario.setPassword(passwordEncoder.encode(password));
             usuario.setRol("EMPLEADO");
             usuario.setEmpleado(empleadoGuardado);
             usuario.setEnabled(true);
@@ -115,36 +166,66 @@ public class AdminController {
             
             return ResponseEntity.ok(empleadoGuardado);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Error al crear empleado: " + e.getMessage());
+            return ResponseEntity.badRequest().body("Error al registrar empleado: " + e.getMessage());
         }
     }
     
     /**
-     * Endpoint para actualizar un empleado existente
+     * Endpoint para actualizar un empleado existente (usando DTO)
      * @param id ID del empleado a actualizar
-     * @param empleadoActualizado Datos actualizados del empleado
+     * @param actualizacionRequest DTO con datos actualizados
      * @return Empleado actualizado
      */
-    @PutMapping("/empleados/{id}")
-    public ResponseEntity<?> actualizarEmpleado(
+    @PutMapping("/empleados/{id}/dto")
+    public ResponseEntity<?> actualizarEmpleadoConDTO(
             @PathVariable String id, 
-            @RequestBody Empleado empleadoActualizado) {
+            @RequestBody EmpleadoActualizacionRequest actualizacionRequest) {
         
         Optional<Empleado> empleadoOpt = empleadoRepository.findById(id);
         if (empleadoOpt.isPresent()) {
             Empleado empleado = empleadoOpt.get();
             
-            // Actualizar campos
-            empleado.setNombre(empleadoActualizado.getNombre());
-            empleado.setRut(empleadoActualizado.getRut());
-            empleado.setFechaNacimiento(empleadoActualizado.getFechaNacimiento());
-            empleado.setProfesion(empleadoActualizado.getProfesion());
-            empleado.setCargo(empleadoActualizado.getCargo());
-            empleado.setSueldoBase(empleadoActualizado.getSueldoBase());
+            // Actualizar campos solo si están presentes en la solicitud
+            if (actualizacionRequest.getNombre() != null) {
+                empleado.setNombre(actualizacionRequest.getNombre());
+            }
             
-            empleadoRepository.save(empleado);
+            if (actualizacionRequest.getRut() != null) {
+                empleado.setRut(actualizacionRequest.getRut());
+            }
             
-            return ResponseEntity.ok(empleado);
+            if (actualizacionRequest.getFechaNacimiento() != null) {
+                empleado.setFechaNacimiento(actualizacionRequest.getFechaNacimiento());
+            }
+            
+            if (actualizacionRequest.getProfesion() != null) {
+                empleado.setProfesion(actualizacionRequest.getProfesion());
+            }
+            
+            if (actualizacionRequest.getCargo() != null) {
+                empleado.setCargo(actualizacionRequest.getCargo());
+            }
+            
+            if (actualizacionRequest.getSueldoBase() != null) {
+                empleado.setSueldoBase(actualizacionRequest.getSueldoBase());
+            }
+            
+            // Actualizar email si se proporciona
+            if (actualizacionRequest.getEmail() != null && !actualizacionRequest.getEmail().trim().isEmpty()) {
+                // Verificar si el nuevo email ya está en uso por otro empleado
+                Empleado empleadoConEmail = empleadoRepository.findByEmail(actualizacionRequest.getEmail());
+                if (empleadoConEmail != null && !empleadoConEmail.getId().equals(id)) {
+                    return ResponseEntity.badRequest().body("El correo electrónico ya está en uso por otro empleado");
+                }
+                empleado.setEmail(actualizacionRequest.getEmail());
+            }
+            
+            Empleado empleadoActualizado = empleadoRepository.save(empleado);
+            
+            // Convertir a DTO para la respuesta
+            EmpleadoResponse respuesta = EmpleadoResponse.fromEmpleado(empleadoActualizado);
+            
+            return ResponseEntity.ok(respuesta);
         } else {
             return ResponseEntity.notFound().build();
         }
@@ -378,6 +459,7 @@ public class AdminController {
             empleadoReporte.put("empleadoId", empleado.getId());
             empleadoReporte.put("empleadoNombre", empleado.getNombre());
             empleadoReporte.put("empleadoRut", empleado.getRut());
+            empleadoReporte.put("empleadoEmail", empleado.getEmail());
             empleadoReporte.put("diasTrabajados", diasTrabajados);
             empleadoReporte.put("horasTrabajadas", horasTrabajadas);
             

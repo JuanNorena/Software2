@@ -49,4 +49,11 @@ public interface EmpleadoRepository extends MongoRepository<Empleado, String> {
      * @return Lista de empleados que coinciden con el criterio de búsqueda
      */
     List<Empleado> findByNombreContainingIgnoreCase(String nombre);
+    
+    /**
+     * Busca un empleado por su correo electrónico
+     * @param email El correo electrónico del empleado a buscar
+     * @return El empleado encontrado o null si no existe
+     */
+    Empleado findByEmail(String email);
 }

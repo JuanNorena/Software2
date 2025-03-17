@@ -18,9 +18,11 @@ import software2.backend.repository.RegistroAsistenciaRepository;
 import software2.backend.service.AuthService;
 import software2.backend.dto.LoginRequest;
 import software2.backend.dto.LoginResponse;
+import software2.backend.service.PasswordResetService;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Map;
 
 /**
  * Controlador para manejar la autenticación de usuarios.
@@ -38,6 +40,9 @@ public class AuthController {
     
     @Autowired
     private RegistroAsistenciaRepository registroAsistenciaRepository;
+    
+    @Autowired
+    private PasswordResetService passwordResetService;
     
     /**
      * Endpoint para iniciar sesión
@@ -135,6 +140,78 @@ public class AuthController {
             registro.setHoraSalida(LocalTime.now());
             registro.actualizarTotalHoras();
             registroAsistenciaRepository.save(registro);
+        }
+    }
+
+    /**
+     * Endpoint para iniciar el proceso de recuperación de contraseña
+     * @param requestMap Mapa con el correo electrónico
+     * @return Mensaje indicando si se envió el correo
+     */
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> requestMap) {
+        String email = requestMap.get("email");
+        
+        if (email == null || email.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("El correo electrónico es obligatorio");
+        }
+        
+        boolean result = passwordResetService.initiatePasswordReset(email);
+        
+        if (result) {
+            return ResponseEntity.ok("Se ha enviado un correo con las instrucciones para restablecer la contraseña");
+        } else {
+            // Por razones de seguridad, no indicamos si el correo existe o no
+            return ResponseEntity.ok("Si el correo está registrado, recibirás las instrucciones para restablecer la contraseña");
+        }
+    }
+    
+    /**
+     * Endpoint para validar un token de recuperación de contraseña
+     * @param requestMap Mapa con el token de recuperación
+     * @return Estado de validación del token
+     */
+    @PostMapping("/validate-reset-token")
+    public ResponseEntity<?> validateResetToken(@RequestBody Map<String, String> requestMap) {
+        String token = requestMap.get("token");
+        
+        if (token == null || token.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("El token es obligatorio");
+        }
+        
+        boolean isValid = passwordResetService.validateResetToken(token);
+        
+        if (isValid) {
+            return ResponseEntity.ok(Map.of("valid", true));
+        } else {
+            return ResponseEntity.ok(Map.of("valid", false, "message", "El token es inválido o ha expirado"));
+        }
+    }
+    
+    /**
+     * Endpoint para restablecer la contraseña
+     * @param requestMap Mapa con el token y la nueva contraseña
+     * @return Mensaje indicando si se cambió la contraseña
+     */
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> requestMap) {
+        String token = requestMap.get("token");
+        String newPassword = requestMap.get("newPassword");
+        
+        if (token == null || token.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("El token es obligatorio");
+        }
+        
+        if (newPassword == null || newPassword.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("La nueva contraseña es obligatoria");
+        }
+        
+        boolean result = passwordResetService.completePasswordReset(token, newPassword);
+        
+        if (result) {
+            return ResponseEntity.ok("Contraseña restablecida con éxito");
+        } else {
+            return ResponseEntity.badRequest().body("No se pudo restablecer la contraseña. El token es inválido o ha expirado");
         }
     }
 }

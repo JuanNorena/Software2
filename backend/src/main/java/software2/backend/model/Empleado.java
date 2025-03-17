@@ -28,6 +28,7 @@ public class Empleado {
     
     private String nombre;
     private String rut;
+    private String email; // Correo electrónico para recuperación de contraseña
     private LocalDate fechaNacimiento;
     private String profesion;
     private String cargo;
