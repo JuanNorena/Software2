@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import software2.backend.model.Empleado;
@@ -69,4 +70,32 @@ public interface LiquidacionSueldoRepository extends MongoRepository<Liquidacion
      * @return Lista de liquidaciones de sueldo del empleado con el estado especificado
      */
     List<LiquidacionSueldo> findByEmpleadoAndEstado(Empleado empleado, String estado);
+    
+    /**
+     * Busca liquidaciones de sueldo por año y mes
+     * @param anio El año de las liquidaciones a buscar
+     * @param mes El mes de las liquidaciones a buscar (1-12)
+     * @return Lista de liquidaciones de sueldo del año y mes especificados
+     */
+    @Query("{'fecha': {'$gte': {'$date': '?0-?1-01'}, '$lte': {'$date': '?0-?1-?2'}}}")
+    List<LiquidacionSueldo> findByFechaAnioAndFechaMes(int anio, int mes);
+    
+    /**
+     * Busca liquidaciones de sueldo por empleado, año y mes
+     * @param empleado El empleado cuyas liquidaciones se quieren obtener
+     * @param anio El año de las liquidaciones a buscar
+     * @param mes El mes de las liquidaciones a buscar (1-12)
+     * @return Lista de liquidaciones de sueldo del empleado, año y mes especificados
+     */
+    @Query("{'empleado': ?0, 'fecha': {'$gte': {'$date': '?1-?2-01'}, '$lte': {'$date': '?1-?2-?3'}}}")
+    List<LiquidacionSueldo> findByEmpleadoAndFechaAnioAndFechaMes(Empleado empleado, int anio, int mes);
+    
+    /**
+     * Cuenta liquidaciones de sueldo por año y mes
+     * @param anio El año de las liquidaciones a contar
+     * @param mes El mes de las liquidaciones a contar (1-12)
+     * @return Número de liquidaciones de sueldo del año y mes especificados
+     */
+    @Query(value = "{'fecha': {'$gte': {'$date': '?0-?1-01'}, '$lte': {'$date': '?0-?1-?2'}}}", count = true)
+    long countByFechaAnioAndFechaMes(int anio, int mes);
 }

@@ -30,6 +30,9 @@ import java.util.stream.Collectors;
 /**
  * Controlador para manejar operaciones administrativas.
  * Proporciona endpoints para gestionar empleados, consultar reportes y generar liquidaciones.
+ * 
+ * Nota: Las operaciones relacionadas con liquidaciones de sueldo han sido migradas a:
+ * @see LiquidacionesAdminController para APIs específicas de liquidaciones
  */
 @RestController
 @RequestMapping("/api/admin")
@@ -340,6 +343,7 @@ public class AdminController {
      * Endpoint para obtener las liquidaciones de sueldo de un empleado
      * @param id ID del empleado
      * @return Lista de liquidaciones de sueldo
+     * @deprecated Usar /api/admin/liquidaciones/empleado/{empleadoId} en su lugar
      */
     @GetMapping("/empleados/{id}/liquidaciones")
     public ResponseEntity<?> obtenerLiquidacionesEmpleado(@PathVariable String id) {
@@ -348,81 +352,6 @@ public class AdminController {
             Empleado empleado = empleadoOpt.get();
             List<LiquidacionSueldo> liquidaciones = liquidacionSueldoRepository.findByEmpleado(empleado);
             return ResponseEntity.ok(liquidaciones);
-        } else {
-            return ResponseEntity.notFound().build();
-        }
-    }
-    
-    /**
-     * Endpoint para generar una liquidación de sueldo para un empleado
-     * @param id ID del empleado
-     * @param anio Año del mes a liquidar
-     * @param mes Mes a liquidar (1-12)
-     * @return Liquidación generada
-     */
-    @PostMapping("/empleados/{id}/liquidaciones/{anio}/{mes}")
-    public ResponseEntity<?> generarLiquidacion(
-            @PathVariable String id,
-            @PathVariable int anio, 
-            @PathVariable int mes) {
-        
-        Optional<Empleado> empleadoOpt = empleadoRepository.findById(id);
-        if (empleadoOpt.isPresent()) {
-            Empleado empleado = empleadoOpt.get();
-            
-            // Verificar si ya existe una liquidación para este mes
-            YearMonth yearMonth = YearMonth.of(anio, mes);
-            LocalDate primerDia = yearMonth.atDay(1);
-            LocalDate ultimoDia = yearMonth.atEndOfMonth();
-            
-            // Obtener registros de asistencia del mes
-            List<RegistroAsistencia> registros = registroAsistenciaRepository
-                    .findByEmpleadoAndFechaBetween(empleado, primerDia, ultimoDia);
-            
-            // Calcular total de horas trabajadas
-            double horasTrabajadas = registros.stream()
-                    .mapToDouble(RegistroAsistencia::getTotalHorasTrabajadas)
-                    .sum();
-            
-            // Calcular sueldo bruto considerando las horas trabajadas
-            // El sueldo base se considera para una jornada completa (160 horas mensuales)
-            // Si trabaja más horas, se pagan horas extra; si trabaja menos, se paga proporcional
-            double sueldoBase = empleado.getSueldoBase();
-            double horasEstandar = 160.0; // Horas estándar mensuales
-            double sueldoBruto;
-            
-            if (horasTrabajadas <= horasEstandar) {
-                // Pago proporcional si trabajó menos de lo estándar
-                sueldoBruto = sueldoBase * (horasTrabajadas / horasEstandar);
-            } else {
-                // Sueldo base más horas extra con 50% adicional
-                double horasExtra = horasTrabajadas - horasEstandar;
-                double valorHoraNormal = sueldoBase / horasEstandar;
-                double valorHoraExtra = valorHoraNormal * 1.5;
-                sueldoBruto = sueldoBase + (horasExtra * valorHoraExtra);
-            }
-            
-            // Crear liquidación
-            LiquidacionSueldo liquidacion = new LiquidacionSueldo();
-            liquidacion.setFecha(LocalDate.now());
-            liquidacion.setEstado("emitido");
-            liquidacion.setSueldoBruto(sueldoBruto);
-            liquidacion.setEmpleado(empleado);
-            
-            // Aplicar descuentos (simplificado)
-            double descuentoAFP = sueldoBruto * 0.10; // 10% AFP
-            double descuentoSalud = sueldoBruto * 0.07; // 7% Salud
-            double totalDescuentos = descuentoAFP + descuentoSalud;
-            
-            liquidacion.setTotalDescuentos(totalDescuentos);
-            liquidacion.setSueldoNeto(sueldoBruto - totalDescuentos);
-            
-            // Guardar liquidación
-            liquidacionSueldoRepository.save(liquidacion);
-            empleado.agregarLiquidacionSueldo(liquidacion);
-            empleadoRepository.save(empleado);
-            
-            return ResponseEntity.ok(liquidacion);
         } else {
             return ResponseEntity.notFound().build();
         }
@@ -472,112 +401,5 @@ public class AdminController {
         resultado.put("empleados", reporte);
         
         return ResponseEntity.ok(resultado);
-    }
-    
-    /**
-     * Endpoint para obtener un reporte de todas las liquidaciones generadas en un mes
-     * @param anio Año del mes a consultar
-     * @param mes Mes a consultar (1-12)
-     * @return Reporte de liquidaciones
-     */
-    @GetMapping("/reportes/liquidaciones/{anio}/{mes}")
-    public ResponseEntity<?> obtenerReporteLiquidaciones(
-            @PathVariable int anio, 
-            @PathVariable int mes) {
-        
-        YearMonth yearMonth = YearMonth.of(anio, mes);
-        LocalDate primerDia = yearMonth.atDay(1);
-        LocalDate ultimoDia = yearMonth.atEndOfMonth();
-        
-        List<LiquidacionSueldo> liquidaciones = liquidacionSueldoRepository.findByFechaBetween(primerDia, ultimoDia);
-        
-        double totalSueldosBrutos = liquidaciones.stream()
-                .mapToDouble(LiquidacionSueldo::getSueldoBruto)
-                .sum();
-        
-        double totalSueldosNetos = liquidaciones.stream()
-                .mapToDouble(LiquidacionSueldo::getSueldoNeto)
-                .sum();
-        
-        double totalDescuentos = liquidaciones.stream()
-                .mapToDouble(LiquidacionSueldo::getTotalDescuentos)
-                .sum();
-        
-        Map<String, Object> resultado = new HashMap<>();
-        resultado.put("mes", yearMonth.getMonth().toString());
-        resultado.put("anio", yearMonth.getYear());
-        resultado.put("totalLiquidaciones", liquidaciones.size());
-        resultado.put("totalSueldosBrutos", totalSueldosBrutos);
-        resultado.put("totalSueldosNetos", totalSueldosNetos);
-        resultado.put("totalDescuentos", totalDescuentos);
-        resultado.put("liquidaciones", liquidaciones);
-        
-        return ResponseEntity.ok(resultado);
-    }
-    
-    /**
-     * Endpoint para imprimir un reporte de liquidaciones en formato PDF (simulado)
-     * @param anio Año del mes a consultar
-     * @param mes Mes a consultar (1-12)
-     * @return URL del reporte generado
-     */
-    @GetMapping("/reportes/liquidaciones/{anio}/{mes}/imprimir")
-    public ResponseEntity<?> imprimirReporteLiquidaciones(
-            @PathVariable int anio, 
-            @PathVariable int mes) {
-        
-        // Simulación de generación de reporte PDF
-        String nombreReporte = "Liquidaciones_" + mes + "_" + anio + ".pdf";
-        
-        Map<String, Object> resultado = new HashMap<>();
-        resultado.put("mensaje", "Reporte generado con éxito");
-        resultado.put("nombreArchivo", nombreReporte);
-        resultado.put("url", "/api/admin/reportes/descargar/" + nombreReporte);
-        
-        return ResponseEntity.ok(resultado);
-    }
-    
-    /**
-     * Endpoint para obtener el detalle de una liquidación específica
-     * @param id ID de la liquidación
-     * @return Liquidación de sueldo
-     */
-    @GetMapping("/liquidaciones/{id}")
-    public ResponseEntity<?> obtenerDetalleLiquidacion(@PathVariable String id) {
-        try {
-            LiquidacionSueldo liquidacion = liquidacionSueldoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Liquidación no encontrada"));
-            
-            return ResponseEntity.ok(liquidacion);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Error al obtener la liquidación: " + e.getMessage());
-        }
-    }
-    
-    /**
-     * Endpoint para imprimir una liquidación individual
-     * @param id ID de la liquidación a imprimir
-     * @return URL del PDF generado
-     */
-    @GetMapping("/liquidaciones/{id}/imprimir")
-    public ResponseEntity<?> imprimirLiquidacion(@PathVariable String id) {
-        try {
-            LiquidacionSueldo liquidacion = liquidacionSueldoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Liquidación no encontrada"));
-            
-            // Simulación de generación de PDF individual
-            String nombreArchivo = "Liquidacion_" + liquidacion.getEmpleado().getRut() + "_" + 
-                                  liquidacion.getFecha().getMonthValue() + "_" + 
-                                  liquidacion.getFecha().getYear() + ".pdf";
-            
-            Map<String, Object> resultado = new HashMap<>();
-            resultado.put("mensaje", "Liquidación generada con éxito");
-            resultado.put("nombreArchivo", nombreArchivo);
-            resultado.put("url", "/api/admin/liquidaciones/descargar/" + nombreArchivo);
-            
-            return ResponseEntity.ok(resultado);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Error al generar la liquidación: " + e.getMessage());
-        }
     }
 }

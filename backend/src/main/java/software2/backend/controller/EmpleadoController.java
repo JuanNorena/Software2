@@ -1,9 +1,9 @@
 package software2.backend.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import software2.backend.model.Empleado;
@@ -15,7 +15,10 @@ import software2.backend.repository.LiquidacionSueldoRepository;
 import software2.backend.repository.RegistroAsistenciaRepository;
 import software2.backend.dto.EmpleadoActualizacionRequest;
 import software2.backend.dto.EmpleadoResponse;
+import software2.backend.exception.ResourceNotFoundException;
+import software2.backend.service.EmpleadoService;
 
+import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.HashMap;
@@ -28,16 +31,27 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/empleado")
+@Validated
 public class EmpleadoController {
 
-    @Autowired
-    private EmpleadoRepository empleadoRepository;
+    private final EmpleadoRepository empleadoRepository;
+    private final RegistroAsistenciaRepository registroAsistenciaRepository;
+    private final LiquidacionSueldoRepository liquidacionSueldoRepository;
+    private final EmpleadoService empleadoService;
     
-    @Autowired
-    private RegistroAsistenciaRepository registroAsistenciaRepository;
-    
-    @Autowired
-    private LiquidacionSueldoRepository liquidacionSueldoRepository;
+    /**
+     * Constructor con inyección de dependencias
+     */
+    public EmpleadoController(
+            EmpleadoRepository empleadoRepository,
+            RegistroAsistenciaRepository registroAsistenciaRepository,
+            LiquidacionSueldoRepository liquidacionSueldoRepository,
+            EmpleadoService empleadoService) {
+        this.empleadoRepository = empleadoRepository;
+        this.registroAsistenciaRepository = registroAsistenciaRepository;
+        this.liquidacionSueldoRepository = liquidacionSueldoRepository;
+        this.empleadoService = empleadoService;
+    }
     
     /**
      * Obtiene el empleado autenticado actualmente
@@ -88,7 +102,7 @@ public class EmpleadoController {
     @GetMapping("/perfil/dto")
     public ResponseEntity<?> obtenerPerfilDTO() {
         try {
-            Empleado empleado = getEmpleadoAutenticado();
+            Empleado empleado = empleadoService.obtenerEmpleadoAutenticado();
             EmpleadoResponse respuesta = EmpleadoResponse.fromEmpleado(empleado);
             return ResponseEntity.ok(respuesta);
         } catch (Exception e) {
@@ -130,34 +144,13 @@ public class EmpleadoController {
      * @return Empleado actualizado en formato DTO
      */
     @PutMapping("/perfil/dto")
-    public ResponseEntity<?> actualizarPerfilConDTO(@RequestBody EmpleadoActualizacionRequest actualizacionRequest) {
-        Empleado empleado = getEmpleadoAutenticado();
-        
-        // Actualizar solo campos permitidos y si están presentes en la solicitud
-        if (actualizacionRequest.getNombre() != null) {
-            empleado.setNombre(actualizacionRequest.getNombre());
+    public ResponseEntity<?> actualizarPerfilConDTO(@Valid @RequestBody EmpleadoActualizacionRequest actualizacionRequest) {
+        try {
+            EmpleadoResponse respuesta = empleadoService.actualizarPerfilEmpleado(actualizacionRequest);
+            return ResponseEntity.ok(respuesta);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
-        
-        if (actualizacionRequest.getProfesion() != null) {
-            empleado.setProfesion(actualizacionRequest.getProfesion());
-        }
-        
-        // Actualizar email si se proporciona
-        if (actualizacionRequest.getEmail() != null && !actualizacionRequest.getEmail().trim().isEmpty()) {
-            // Verificar si el email ya está en uso
-            Empleado empleadoConEmail = empleadoRepository.findByEmail(actualizacionRequest.getEmail());
-            if (empleadoConEmail != null && !empleadoConEmail.getId().equals(empleado.getId())) {
-                return ResponseEntity.badRequest().body("El correo electrónico ya está en uso por otro empleado");
-            }
-            empleado.setEmail(actualizacionRequest.getEmail());
-        }
-        
-        Empleado empleadoActualizado = empleadoRepository.save(empleado);
-        
-        // Convertir a DTO para la respuesta
-        EmpleadoResponse respuesta = EmpleadoResponse.fromEmpleado(empleadoActualizado);
-        
-        return ResponseEntity.ok(respuesta);
     }
     
     /**
@@ -276,9 +269,12 @@ public class EmpleadoController {
      */
     @GetMapping("/liquidaciones")
     public ResponseEntity<?> obtenerLiquidaciones() {
-        Empleado empleado = getEmpleadoAutenticado();
-        List<LiquidacionSueldo> liquidaciones = liquidacionSueldoRepository.findByEmpleado(empleado);
-        return ResponseEntity.ok(liquidaciones);
+        try {
+            Empleado empleado = empleadoService.obtenerEmpleadoAutenticado();
+            return ResponseEntity.ok(empleadoService.obtenerLiquidaciones(empleado));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error al obtener liquidaciones: " + e.getMessage());
+        }
     }
     
     /**
@@ -288,17 +284,16 @@ public class EmpleadoController {
      */
     @GetMapping("/liquidaciones/{id}")
     public ResponseEntity<?> obtenerLiquidacion(@PathVariable String id) {
-        Empleado empleado = getEmpleadoAutenticado();
-        
-        LiquidacionSueldo liquidacion = liquidacionSueldoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Liquidación no encontrada"));
-        
-        // Verificar que la liquidación pertenezca al empleado autenticado
-        if (!liquidacion.getEmpleado().getId().equals(empleado.getId())) {
-            return ResponseEntity.status(403).body("No tiene permiso para acceder a esta liquidación");
+        try {
+            Empleado empleado = empleadoService.obtenerEmpleadoAutenticado();
+            return ResponseEntity.ok(empleadoService.obtenerLiquidacion(id, empleado));
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(403).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error al obtener liquidación: " + e.getMessage());
         }
-        
-        return ResponseEntity.ok(liquidacion);
     }
     
     /**
