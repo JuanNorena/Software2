@@ -1,10 +1,6 @@
 <div class="text-center; border: 2px solid #333;">
-  <!-- Encabezado del portal de empleados -->
-  <div class="text-center" style="font-family: 'Arial', sans-serif; font-size: 24px; font-weight: bold; color: #00306e; margin-bottom: 5px;">
-    <h3>Portal de Empleados</h3>
-  </div>
   <!-- Mensaje de bienvenida -->
-  <div class="text-center" style="font-family: 'Arial', sans-serif; font-size: 24px; font-weight: bold; color: #00306e; margin-bottom: 5px;">
+  <div class="text-center" style="font: 1em Inria-serif; font-size: 26px; font-weight: bold; color: #00306e; margin-bottom: 5px;">
     <h3>Bienvenido al Portal de Empleados</h3>
   </div>
 </div>
@@ -53,19 +49,21 @@
           </button>
         </div>
 
-        <!-- Sección con opciones adicionales (recordar usuario y recuperar contraseña) -->
-        <div class="d-flex justify-content-between mt-2">
-          <!-- Checkbox para recordar usuario -->
+        <!-- Sección recordar usuario -->
+        <div class="d-flex justify-content-between mt-3 align-items-center">
+          <!-- Checkbox -->
           <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="flexCheckDefault">
-            <label class="form-check-label" for="flexCheckDefault">
-              Recordar usuario
-            </label>
+            <input class="form-check-input" type="checkbox" id="rememberUser" formControlName="rememberUser">
+            <label class="form-check-label" for="rememberUser">Recordar usuario</label>
           </div>
-          <!-- Enlace para recuperar contraseña -->
-          <a href="">Olvidé contraseña</a>
+          
+          <!-- Olvido Contraseña-->
+          <a routerLink="/password-recovery" 
+             class="text-primary fw-medium"
+             style="text-decoration: underline; cursor: pointer;">
+            Olvidé mi contraseña
+          </a>
         </div>
-
       </form>
     </div>
   </div>

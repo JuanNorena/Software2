@@ -28,7 +28,9 @@ export class LoginComponent {
   console.log(this.loginForm.value);
 }
 
- 
+onForgotPassword() {
+  // Lógica para redirigir a recuperación
+}
 }
 
 
