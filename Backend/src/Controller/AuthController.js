@@ -23,7 +23,7 @@ const mongoose = require('mongoose');
  * @param {Object} req.body - Datos del empleado y usuario a crear
  * @param {string} req.body.username - Nombre de usuario
  * @param {string} req.body.password - Contraseña
- * @param {string} req.body.email - Correo electrónico (OBLIGATORIO)
+ * @param {string} req.body.email - Correo electrónico (OPCIONAL)
  * @param {string} req.body.nombre - Nombre completo del empleado
  * @param {string} req.body.cargo - Cargo que desempeña
  * @param {Date} req.body.fechaNacimiento - Fecha de nacimiento
@@ -38,8 +38,8 @@ const mongoose = require('mongoose');
  */
 router.post('/register', asyncHandler(async (req, res) => {
   try {
-    // Validar campos obligatorios
-    const camposRequeridos = ['username', 'password', 'email', 'nombre', 'rut', 'empresaRut'];
+    // Validar campos obligatorios (email ya no es obligatorio)
+    const camposRequeridos = ['username', 'password', 'nombre', 'rut', 'empresaRut'];
     
     for (const campo of camposRequeridos) {
       if (!req.body[campo]) {
@@ -53,10 +53,12 @@ router.post('/register', asyncHandler(async (req, res) => {
       return res.status(400).json({ message: 'El nombre de usuario ya está en uso' });
     }
     
-    // Verificar si el email ya está registrado
-    const emailExistente = await Usuario.findOne({ email: req.body.email });
-    if (emailExistente) {
-      return res.status(400).json({ message: 'El email ya está registrado' });
+    // Verificar si el email ya está registrado (solo si se proporcionó)
+    if (req.body.email) {
+      const emailExistente = await Usuario.findOne({ email: req.body.email });
+      if (emailExistente) {
+        return res.status(400).json({ message: 'El email ya está registrado' });
+      }
     }
 
     // Verificar si el RUT ya existe
@@ -90,11 +92,15 @@ router.post('/register', asyncHandler(async (req, res) => {
     // Crear el usuario asociado al empleado
     const usuario = new Usuario({
       username: req.body.username,
-      email: req.body.email, // Agregar el email que faltaba
       password: req.body.password,
       rol: 'EMPLEADO',
       empleado: nuevoEmpleado._id
     });
+
+    // Añadir email solo si se proporcionó
+    if (req.body.email) {
+      usuario.email = req.body.email;
+    }
 
     await usuario.save();
 

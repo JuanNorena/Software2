@@ -28,8 +28,9 @@ const usuarioSchema = new Schema({
   },
   email: {
     type: String,
-    required: true,
+    required: false, // Cambiar de true a false para hacer el campo opcional
     unique: true,
+    sparse: true, // Permite múltiples documentos sin email pero mantiene unicidad entre los que sí lo tienen
     trim: true,
     match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Por favor ingrese un email válido']
   },
