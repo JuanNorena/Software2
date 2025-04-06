@@ -11,6 +11,7 @@ const Empresa = require('../Model/Empresa');
 const BaseController = require('./BaseController');
 const { authenticateUser, authorizeRoles } = require('../middleware/authMiddleware');
 const asyncHandler = require('../middleware/asyncHandler');
+const mongoose = require('mongoose');
 
 /**
  * @description Obtiene todos los empleados registrados en el sistema
@@ -45,14 +46,24 @@ router.get('/:id', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(asy
 
 /**
  * @description Obtiene todos los empleados de una empresa específica
- * @route GET /api/empleados/empresa/:empresaId
+ * @route GET /api/empleados/empresa/:empresaRut
  * @access Admin
- * @param {string} empresaId - ID de la empresa
+ * @param {string} empresaRut - RUT de la empresa
  * @returns {Array} Lista de empleados que pertenecen a la empresa especificada
  */
-router.get('/empresa/:empresaId', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
-  const empleados = await Empleado.find({ empresa: req.params.empresaId }).populate('empresa', 'nombre rut');
-  res.json(empleados);
+router.get('/empresa/:empresaRut', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
+  try {
+    // Verificar que la empresa existe por RUT
+    const empresaExiste = await Empresa.findOne({ rut: req.params.empresaRut });
+    if (!empresaExiste) {
+      return res.status(404).json({ message: 'Empresa no encontrada' });
+    }
+
+    const empleados = await Empleado.find({ empresa: empresaExiste._id }).populate('empresa', 'nombre rut');
+    res.json(empleados);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 }));
 
 /**
@@ -68,38 +79,46 @@ router.get('/empresa/:empresaId', authenticateUser, authorizeRoles(['ADMIN']), a
  * @param {string} req.body.profesion - Profesión o título
  * @param {string} req.body.rut - RUT del empleado
  * @param {number} req.body.sueldoBase - Sueldo base
- * @param {string} req.body.empresa - ID de la empresa donde trabaja
+ * @param {string} req.body.empresaRut - RUT de la empresa donde trabaja
  * @param {boolean} [req.body.esEncargadoPersonal=false] - Indica si es encargado de personal
  * @returns {Object} Datos del empleado creado
  */
 router.post('/', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
-  // Verificar si la empresa existe
-  const empresaExiste = await Empresa.findById(req.body.empresa);
-  if (!empresaExiste) {
-    return res.status(404).json({ message: 'La empresa especificada no existe' });
+  try {
+    // Verificar si el RUT de empresa existe
+    if (!req.body.empresaRut) {
+      return res.status(400).json({ message: 'RUT de empresa no proporcionado' });
+    }
+    
+    const empresaExiste = await Empresa.findOne({ rut: req.body.empresaRut });
+    if (!empresaExiste) {
+      return res.status(404).json({ message: 'La empresa especificada no existe' });
+    }
+
+    // Verificar si el RUT de empleado ya existe
+    const rutExistente = await Empleado.findOne({ rut: req.body.rut });
+    if (rutExistente) {
+      return res.status(400).json({ message: 'El RUT ya está registrado' });
+    }
+
+    const empleado = new Empleado({
+      nombre: req.body.nombre,
+      cargo: req.body.cargo,
+      fechaNacimiento: req.body.fechaNacimiento,
+      id: req.body.id,
+      numeroCuentaDigital: req.body.numeroCuentaDigital,
+      profesion: req.body.profesion,
+      rut: req.body.rut,
+      sueldoBase: req.body.sueldoBase,
+      empresa: empresaExiste._id,
+      esEncargadoPersonal: req.body.esEncargadoPersonal || false
+    });
+
+    const nuevoEmpleado = await empleado.save();
+    res.status(201).json(nuevoEmpleado);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
   }
-
-  // Verificar si el RUT ya existe
-  const rutExistente = await Empleado.findOne({ rut: req.body.rut });
-  if (rutExistente) {
-    return res.status(400).json({ message: 'El RUT ya está registrado' });
-  }
-
-  const empleado = new Empleado({
-    nombre: req.body.nombre,
-    cargo: req.body.cargo,
-    fechaNacimiento: req.body.fechaNacimiento,
-    id: req.body.id,
-    numeroCuentaDigital: req.body.numeroCuentaDigital,
-    profesion: req.body.profesion,
-    rut: req.body.rut,
-    sueldoBase: req.body.sueldoBase,
-    empresa: req.body.empresa,
-    esEncargadoPersonal: req.body.esEncargadoPersonal || false
-  });
-
-  const nuevoEmpleado = await empleado.save();
-  res.status(201).json(nuevoEmpleado);
 }));
 
 /**
@@ -111,25 +130,33 @@ router.post('/', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async
  * @returns {Object} Datos del empleado actualizado
  */
 router.put('/:id', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
-  // Verificar si la empresa existe, si se está actualizando
-  if (req.body.empresa) {
-    const empresaExiste = await Empresa.findById(req.body.empresa);
-    if (!empresaExiste) {
-      return res.status(404).json({ message: 'La empresa especificada no existe' });
+  try {
+    // Verificar si se actualiza la empresa y validar por RUT
+    if (req.body.empresaRut) {
+      const empresaExiste = await Empresa.findOne({ rut: req.body.empresaRut });
+      if (!empresaExiste) {
+        return res.status(404).json({ message: 'La empresa especificada no existe' });
+      }
+      // Reemplazar el campo empresaRut con el ID real de la empresa
+      req.body.empresa = empresaExiste._id;
+      // Eliminar el campo empresaRut para que no cause conflicto
+      delete req.body.empresaRut;
     }
+
+    const empleadoActualizado = await Empleado.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    ).populate('empresa', 'nombre rut');
+
+    if (!empleadoActualizado) {
+      return res.status(404).json({ message: 'Empleado no encontrado' });
+    }
+
+    res.json(empleadoActualizado);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
   }
-
-  const empleadoActualizado = await Empleado.findByIdAndUpdate(
-    req.params.id,
-    req.body,
-    { new: true, runValidators: true }
-  ).populate('empresa', 'nombre rut');
-
-  if (!empleadoActualizado) {
-    return res.status(404).json({ message: 'Empleado no encontrado' });
-  }
-
-  res.json(empleadoActualizado);
 }));
 
 /**

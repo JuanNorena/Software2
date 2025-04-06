@@ -184,22 +184,22 @@ router.post('/generar', authenticateUser, authorizeRoles(['ADMIN']), asyncHandle
  * @route POST /api/liquidaciones-sueldo/generar-empresa
  * @access Admin
  * @param {Object} req.body - Datos para generar liquidaciones
- * @param {string} req.body.empresaId - ID de la empresa
+ * @param {string} req.body.empresaRut - RUT de la empresa
  * @param {number} req.body.mes - Mes (1-12)
  * @param {number} req.body.anio - Año
  * @returns {Object} Resultados de la generación
  */
 router.post('/generar-empresa', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
-  const { empresaId, mes, anio } = req.body;
+  const { empresaRut, mes, anio } = req.body;
   
-  if (!empresaId || !mes || !anio) {
+  if (!empresaRut || !mes || !anio) {
     return res.status(400).json({
-      mensaje: 'Debe proporcionar empresaId, mes y anio'
+      mensaje: 'Debe proporcionar empresaRut, mes y anio'
     });
   }
   
   try {
-    const resultados = await LiquidacionService.generarLiquidacionesEmpresa(empresaId, parseInt(mes), parseInt(anio));
+    const resultados = await LiquidacionService.generarLiquidacionesEmpresa(empresaRut, parseInt(mes), parseInt(anio));
     
     res.json({
       mensaje: 'Proceso de generación de liquidaciones completado',

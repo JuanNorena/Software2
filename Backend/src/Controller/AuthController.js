@@ -14,6 +14,7 @@ const asyncHandler = require('../middleware/asyncHandler');
 const { authenticateUser } = require('../middleware/authMiddleware');
 const AuthService = require('../service/AuthService');
 const BaseController = require('./BaseController');
+const mongoose = require('mongoose');
 
 /**
  * @description Registra un nuevo empleado en el sistema con su usuario
@@ -30,7 +31,7 @@ const BaseController = require('./BaseController');
  * @param {string} req.body.profesion - Profesión del empleado
  * @param {string} req.body.rut - RUT del empleado
  * @param {number} req.body.sueldoBase - Sueldo base del empleado
- * @param {string} req.body.empresa - ID de la empresa
+ * @param {string} req.body.empresaRut - RUT de la empresa
  * @param {boolean} [req.body.esEncargadoPersonal=false] - Si es encargado de personal
  * @returns {Object} Datos del empleado creado y token de autenticación
  */
@@ -48,8 +49,13 @@ router.post('/register', asyncHandler(async (req, res) => {
       return res.status(400).json({ message: 'El RUT ya está registrado' });
     }
 
-    // Verificar si la empresa existe
-    const empresaExiste = await require('../Model/Empresa').findById(req.body.empresa);
+    // Validar que se proporcione el RUT de la empresa
+    if (!req.body.empresaRut) {
+      return res.status(400).json({ message: 'RUT de empresa no proporcionado' });
+    }
+
+    // Verificar si la empresa existe por RUT
+    const empresaExiste = await require('../Model/Empresa').findOne({ rut: req.body.empresaRut });
     if (!empresaExiste) {
       return res.status(404).json({ message: 'La empresa especificada no existe' });
     }
@@ -64,7 +70,7 @@ router.post('/register', asyncHandler(async (req, res) => {
       profesion: req.body.profesion,
       rut: req.body.rut,
       sueldoBase: req.body.sueldoBase,
-      empresa: req.body.empresa,
+      empresa: empresaExiste._id, // Usamos el ID obtenido de la consulta por RUT
       esEncargadoPersonal: req.body.esEncargadoPersonal || false
     });
 

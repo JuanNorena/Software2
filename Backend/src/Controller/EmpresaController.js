@@ -13,6 +13,7 @@
 const express = require('express');
 const router = express.Router();
 const Empresa = require('../Model/Empresa');
+const mongoose = require('mongoose');
 
 /**
  * @description Obtiene todas las empresas registradas en el sistema
@@ -29,14 +30,14 @@ router.get('/', async (req, res) => {
 });
 
 /**
- * @description Obtiene una empresa específica por su ID
- * @route GET /api/empresas/:id
- * @param {string} req.params.id - ID de la empresa a buscar
+ * @description Obtiene una empresa específica por su RUT
+ * @route GET /api/empresas/:rut
+ * @param {string} req.params.rut - RUT de la empresa a buscar
  * @returns {Object} Datos de la empresa encontrada
  */
-router.get('/:id', async (req, res) => {
+router.get('/:rut', async (req, res) => {
   try {
-    const empresa = await Empresa.findById(req.params.id);
+    const empresa = await Empresa.findOne({ rut: req.params.rut });
     if (!empresa) {
       return res.status(404).json({ message: 'Empresa no encontrada' });
     }
@@ -76,8 +77,8 @@ router.post('/', async (req, res) => {
 
 /**
  * @description Actualiza los datos de una empresa existente
- * @route PUT /api/empresas/:id
- * @param {string} req.params.id - ID de la empresa a actualizar
+ * @route PUT /api/empresas/:rut
+ * @param {string} req.params.rut - RUT de la empresa a actualizar
  * @param {Object} req.body - Datos a actualizar
  * @param {string} [req.body.nombre] - Nombre de la empresa
  * @param {string} [req.body.rut] - RUT de la empresa
@@ -86,9 +87,9 @@ router.post('/', async (req, res) => {
  * @param {string} [req.body.email] - Email de contacto
  * @returns {Object} Datos de la empresa actualizada
  */
-router.put('/:id', async (req, res) => {
+router.put('/:rut', async (req, res) => {
   try {
-    const empresa = await Empresa.findById(req.params.id);
+    const empresa = await Empresa.findOne({ rut: req.params.rut });
     if (!empresa) {
       return res.status(404).json({ message: 'Empresa no encontrada' });
     }
@@ -108,18 +109,18 @@ router.put('/:id', async (req, res) => {
 
 /**
  * @description Elimina una empresa del sistema
- * @route DELETE /api/empresas/:id
- * @param {string} req.params.id - ID de la empresa a eliminar
+ * @route DELETE /api/empresas/:rut
+ * @param {string} req.params.rut - RUT de la empresa a eliminar
  * @returns {Object} Mensaje de confirmación
  */
-router.delete('/:id', async (req, res) => {
+router.delete('/:rut', async (req, res) => {
   try {
-    const empresa = await Empresa.findById(req.params.id);
+    const empresa = await Empresa.findOne({ rut: req.params.rut });
     if (!empresa) {
       return res.status(404).json({ message: 'Empresa no encontrada' });
     }
 
-    await Empresa.findByIdAndDelete(req.params.id);
+    await Empresa.findByIdAndDelete(empresa._id);
     res.json({ message: 'Empresa eliminada correctamente' });
   } catch (error) {
     res.status(500).json({ message: error.message });

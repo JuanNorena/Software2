@@ -10,6 +10,7 @@ const LiquidacionSueldo = require('../Model/LiquidacionSueldo');
 const Descuento = require('../Model/Descuento');
 const FinancialUtils = require('../utils/FinancialUtils');
 const NotificacionService = require('./NotificacionService');
+const mongoose = require('mongoose');
 
 /**
  * Servicio para gestionar pagos de sueldos y pagos provisionales
@@ -130,10 +131,10 @@ class PagoService {
    * Obtiene pagos provisionales filtrados por período
    * @param {number} mes - Mes (1-12)
    * @param {number} anio - Año
-   * @param {string} [empresaId] - ID de la empresa (opcional)
+   * @param {string} [empresaRut] - RUT de la empresa (opcional)
    * @returns {Promise<Array>} Lista de pagos provisionales
    */
-  async obtenerPagosPorPeriodo(mes, anio, empresaId = null) {
+  async obtenerPagosPorPeriodo(mes, anio, empresaRut = null) {
     const { inicio, fin } = FinancialUtils.obtenerPeriodoMensual(mes, anio);
     
     let query = {
@@ -143,20 +144,33 @@ class PagoService {
       }
     };
     
-    // Si se especificó una empresa, filtramos por empleados de esa empresa
-    if (empresaId) {
-      // Necesitamos hacer un join más complejo con la empresa del empleado
-      const pagos = await PagoContabilidadProvisional.find(query)
-        .populate({
-          path: 'liquidacionSueldo',
-          populate: { path: 'empleado', select: 'empresa nombre rut' }
-        });
+    // Si se especificó una empresa, usamos el RUT para encontrarla
+    if (empresaRut) {
+      // Buscar la empresa por RUT
+      const empresa = await Empresa.findOne({ rut: empresaRut });
+      if (!empresa) {
+        throw new Error('Empresa no encontrada');
+      }
       
-      return pagos.filter(pago => 
-        pago.liquidacionSueldo && 
-        pago.liquidacionSueldo.empleado && 
-        pago.liquidacionSueldo.empleado.empresa.toString() === empresaId
-      );
+      // Continuar con la misma lógica pero usando el ID de la empresa encontrada
+      return await PagoContabilidadProvisional.aggregate([
+        { $match: query },
+        { $lookup: {
+            from: 'liquidacionsueldos',
+            localField: 'liquidacionSueldo',
+            foreignField: '_id',
+            as: 'liquidacion'
+        }},
+        { $unwind: '$liquidacion' },
+        { $lookup: {
+            from: 'empleados',
+            localField: 'liquidacion.empleado',
+            foreignField: '_id',
+            as: 'empleado'
+        }},
+        { $unwind: '$empleado' },
+        { $match: { 'empleado.empresa': empresa._id }}
+      ]);
     }
     
     return await PagoContabilidadProvisional.find(query)

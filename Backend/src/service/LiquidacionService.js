@@ -34,13 +34,13 @@ class LiquidacionService {
    */
   async generarLiquidacion(empleadoId, mes, anio) {
     try {
-      // 1. Obtener datos del empleado
+      // Verificar si el empleado existe
       const empleado = await Empleado.findById(empleadoId);
       if (!empleado) {
         throw new Error('Empleado no encontrado');
       }
 
-      // 2. Verificar si ya existe una liquidación para este período
+      // Verificar si ya existe una liquidación para este período
       const liquidacionExistente = await this.verificarLiquidacionExistente(empleadoId, mes, anio);
       if (liquidacionExistente) {
         throw new Error(`Ya existe una liquidación para el empleado en el período ${mes}/${anio}`);
@@ -207,14 +207,20 @@ class LiquidacionService {
 
   /**
    * Genera liquidaciones para todos los empleados de una empresa
-   * @param {string} empresaId - ID de la empresa
+   * @param {string} empresaRut - RUT de la empresa
    * @param {number} mes - Mes para generar liquidaciones (1-12)
    * @param {number} anio - Año para generar liquidaciones
    * @returns {Promise<Object>} Resultados de la generación (exitosas y fallidas)
    */
-  async generarLiquidacionesEmpresa(empresaId, mes, anio) {
-    // Obtener todos los empleados de la empresa
-    const empleados = await Empleado.find({ empresa: empresaId });
+  async generarLiquidacionesEmpresa(empresaRut, mes, anio) {
+    // Buscar la empresa por RUT
+    const empresa = await Empresa.findOne({ rut: empresaRut });
+    if (!empresa) {
+      throw new Error(`La empresa con RUT ${empresaRut} no existe`);
+    }
+    
+    // Obtener todos los empleados de la empresa usando el ID obtenido
+    const empleados = await Empleado.find({ empresa: empresa._id });
     
     const resultados = {
       exitosas: [],
