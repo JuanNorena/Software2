@@ -1,1 +1,124 @@
-<p>registro works!</p>
+<div class="container py-4">
+    <div class="row justify-content-center">
+      <div class="col-md-8 col-lg-7">
+        <div class="card shadow rounded" style="border: 1px solid #00306e; background-color: #f8f9fa;">
+          <div class="card-header text-center bg-white">
+            <h3 style="color: #00306e; font-weight: bold; font-family: 'Inria Serif', serif;">Registro de Empleados</h3>
+          </div>
+          <div class="card-body">
+            <form [formGroup]="registroForm" (ngSubmit)="registrar()" novalidate>
+  
+              <!-- Datos de la cuenta -->
+              <h5 class="mb-3" style="color: #00306e;">Datos de la cuenta</h5>
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label for="username" class="form-label">Nombre de usuario *</label>
+                  <input type="text" id="username" formControlName="username" class="form-control" placeholder="Usuario">
+                  <div *ngIf="hasError('username')" class="text-danger small">Campo requerido</div>
+                </div>
+  
+                <div class="col-md-6">
+                  <label for="email" class="form-label">Correo electrónico</label>
+                  <input type="email" id="email" formControlName="email" class="form-control" placeholder="Correo">
+                  <div *ngIf="hasError('email')" class="text-danger small">Correo inválido</div>
+                </div>
+  
+                <div class="col-md-12">
+                  <label for="password" class="form-label">Contraseña *</label>
+                  <input type="password" id="password" formControlName="password" class="form-control" placeholder="Contraseña">
+                  <div *ngIf="hasError('password')" class="text-danger small">
+                    <div *ngIf="registroForm.get('password')?.errors?.['required']">Campo requerido</div>
+                    <div *ngIf="registroForm.get('password')?.errors?.['minlength']">Mínimo 8 caracteres</div>
+                  </div>
+                </div>
+              </div>
+  
+              <!-- Datos personales -->
+              <hr class="my-4">
+              <h5 class="mb-3" style="color: #00306e;">Datos personales</h5>
+              <div class="row g-3">
+                <div class="col-md-12">
+                  <label for="nombre" class="form-label">Nombre completo *</label>
+                  <input type="text" id="nombre" formControlName="nombre" class="form-control" placeholder="Nombre completo">
+                  <div *ngIf="hasError('nombre')" class="text-danger small">Campo requerido</div>
+                </div>
+  
+                <div class="col-md-6">
+                  <label for="rut" class="form-label">RUT *</label>
+                  <input type="text" id="rut" formControlName="rut" class="form-control" placeholder="RUT">
+                  <div *ngIf="hasError('rut')" class="text-danger small">RUT inválido o requerido</div>
+                </div>
+  
+                <div class="col-md-6">
+                  <label for="fechaNacimiento" class="form-label">Fecha de nacimiento</label>
+                  <input type="date" id="fechaNacimiento" formControlName="fechaNacimiento" class="form-control">
+                </div>
+              </div>
+  
+              <!-- Datos laborales -->
+              <hr class="my-4">
+              <h5 class="mb-3" style="color: #00306e;">Datos laborales</h5>
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label for="id" class="form-label">ID empleado</label>
+                  <input type="text" id="id" formControlName="id" class="form-control" placeholder="ID">
+                </div>
+  
+                <div class="col-md-6">
+                  <label for="cargo" class="form-label">Cargo</label>
+                  <input type="text" id="cargo" formControlName="cargo" class="form-control" placeholder="Cargo">
+                </div>
+  
+                <div class="col-md-6">
+                  <label for="profesion" class="form-label">Profesión</label>
+                  <input type="text" id="profesion" formControlName="profesion" class="form-control" placeholder="Profesión">
+                </div>
+  
+                <div class="col-md-6">
+                  <label for="sueldoBase" class="form-label">Sueldo base</label>
+                  <input type="number" id="sueldoBase" formControlName="sueldoBase" class="form-control" placeholder="Sueldo base">
+                </div>
+  
+                <div class="col-md-6">
+                  <label for="numeroCuentaDigital" class="form-label">Cuenta digital</label>
+                  <input type="text" id="numeroCuentaDigital" formControlName="numeroCuentaDigital" class="form-control" placeholder="Cuenta digital">
+                </div>
+  
+                <div class="col-md-6">
+                  <label for="empresaRut" class="form-label">RUT empresa *</label>
+                  <input type="text" id="empresaRut" formControlName="empresaRut" class="form-control" placeholder="RUT empresa">
+                  <div *ngIf="hasError('empresaRut')" class="text-danger small">Campo requerido</div>
+                </div>
+  
+                <div class="col-md-12 form-check mt-3">
+                  <input type="checkbox" class="form-check-input" id="esEncargadoPersonal" formControlName="esEncargadoPersonal">
+                  <label class="form-check-label" for="esEncargadoPersonal">Encargado de personal</label>
+                </div>
+              </div>
+  
+              <!-- Mensajes y botones -->
+              <div *ngIf="errorMessage" class="alert alert-danger mt-3">
+                {{ errorMessage }}
+              </div>
+  
+              <div class="d-grid gap-2 mt-4">
+                <button type="submit" class="btn" style="background-color: #00306e; color: white;" [disabled]="registroForm.invalid || loading">
+                  <span *ngIf="loading" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                  Registrar
+                </button>
+                <button type="button" class="btn btn-outline-secondary" (click)="cancelar()">Cancelar</button>
+              </div>
+  
+              <div class="text-center mt-3">
+                <p class="mb-0">¿Ya tienes una cuenta?
+                  <a routerLink="/login" style="color: #00306e; text-decoration: underline;">Iniciar sesión</a>
+                </p>
+              </div>
+  
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
