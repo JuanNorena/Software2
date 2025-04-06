@@ -28,7 +28,6 @@ const pagoContabilidadProvisionalRoutes = require('./Controller/PagoContabilidad
 const descuentoRoutes = require('./Controller/DescuentoController');
 const authRoutes = require('./Controller/AuthController');
 const asistenciaRoutes = require('./Controller/AsistenciaController');
-// Eliminada la importación de: const liquidacionesRoutes = require('./Controller/LiquidacionesController');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -80,7 +79,6 @@ app.use('/api/pagos-sueldo', pagoSueldoRoutes);
 app.use('/api/pagos-contabilidad-provisional', pagoContabilidadProvisionalRoutes);
 app.use('/api/descuentos', descuentoRoutes);
 app.use('/api/asistencia', asistenciaRoutes);
-// Eliminada la ruta: app.use('/api/liquidaciones', liquidacionesRoutes);
 
 /**
  * Ruta de prueba para verificar el funcionamiento de la API

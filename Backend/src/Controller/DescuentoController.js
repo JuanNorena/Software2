@@ -1,5 +1,5 @@
 /**
- * @fileoverview Controlador para gestionar las operaciones relacionadas con los descuentos de liquidaciones de sueldo
+ * @fileoverview Controlador para gestionar descuentos de liquidaciones de sueldo
  * @author Juan Sebastian Noreña
  * @version 1.0.1
  */

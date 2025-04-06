@@ -8,6 +8,7 @@ const express = require('express');
 const router = express.Router();
 const Empresa = require('../Model/Empresa');
 const mongoose = require('mongoose');
+const { authenticateUser, authorizeRoles } = require('../middleware/authMiddleware');
 
 /**
  * @description Obtiene todas las empresas registradas en el sistema

@@ -8,6 +8,8 @@ const express = require('express');
 const router = express.Router();
 const RegistroAsistencia = require('../Model/RegistroAsistencia');
 const Empleado = require('../Model/Empleado');
+const { authenticateUser, authorizeRoles } = require('../middleware/authMiddleware');
+const asyncHandler = require('../middleware/asyncHandler');
 
 /**
  * @description Obtiene todos los registros de asistencia en el sistema

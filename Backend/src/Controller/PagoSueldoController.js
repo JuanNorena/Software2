@@ -1,5 +1,5 @@
 /**
- * @fileoverview Controlador para gestionar las operaciones relacionadas con los pagos de sueldos
+ * @fileoverview Controlador para gestionar pagos de sueldos
  * @author Juan Sebastian Noreña
  * @version 1.0.1
  */
