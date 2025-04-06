@@ -439,4 +439,162 @@ router.get('/informe-previsional/:mes/:anio', authenticateUser, authorizeRoles([
   }
 }));
 
+/**
+ * @description Obtiene el historial completo de asistencia del empleado para una liquidación específica
+ * @route GET /api/liquidaciones-sueldo/:id/asistencia
+ * @access Private
+ * @param {string} req.params.id - ID de la liquidación
+ * @returns {Array} Registros de asistencia del período correspondiente
+ */
+router.get('/:id/asistencia', authenticateUser, asyncHandler(async (req, res) => {
+  try {
+    const liquidacion = await LiquidacionSueldo.findById(req.params.id);
+    
+    if (!liquidacion) {
+      return res.status(404).json({ mensaje: 'Liquidación no encontrada' });
+    }
+    
+    // Verificar acceso
+    if (req.user.roles.includes('ADMIN') || 
+        (req.user.empleadoId && liquidacion.empleado.toString() === req.user.empleadoId.toString())) {
+      
+      // Obtener período de la liquidación
+      const { inicio, fin } = FinancialUtils.obtenerPeriodoMensual(
+        liquidacion.fecha.getMonth() + 1,
+        liquidacion.fecha.getFullYear()
+      );
+      
+      // Buscar registros de asistencia
+      const registros = await RegistroAsistencia.find({
+        empleado: liquidacion.empleado,
+        fecha: {
+          $gte: inicio,
+          $lt: fin
+        }
+      }).sort({ fecha: 1 });
+      
+      // Calcular totales
+      const totalDias = registros.length;
+      let totalHoras = 0;
+      let horasRegulares = 0;
+      let horasExtra = 0;
+      
+      const horasEsperadasPorDia = FinancialUtils.HORAS_JORNADA;
+      
+      registros.forEach(registro => {
+        if (registro.totalHorasTrabajadas) {
+          totalHoras += registro.totalHorasTrabajadas;
+          
+          if (registro.totalHorasTrabajadas > horasEsperadasPorDia) {
+            horasRegulares += horasEsperadasPorDia;
+            horasExtra += (registro.totalHorasTrabajadas - horasEsperadasPorDia);
+          } else {
+            horasRegulares += registro.totalHorasTrabajadas;
+          }
+        }
+      });
+      
+      res.json({
+        liquidacion: {
+          id: liquidacion._id,
+          fecha: liquidacion.fecha,
+          estado: liquidacion.estado
+        },
+        empleado: liquidacion.empleado,
+        periodo: {
+          inicio,
+          fin
+        },
+        resumen: {
+          diasTrabajados: totalDias,
+          horasTotales: parseFloat(totalHoras.toFixed(2)),
+          horasRegulares: parseFloat(horasRegulares.toFixed(2)),
+          horasExtras: parseFloat(horasExtra.toFixed(2))
+        },
+        registros: registros.map(reg => ({
+          fecha: reg.fecha,
+          horaEntrada: reg.horaEntrada,
+          horaSalida: reg.horaSalida,
+          totalHoras: reg.totalHorasTrabajadas
+        }))
+      });
+    } else {
+      return res.status(403).json({ mensaje: 'No tienes permiso para acceder a esta información' });
+    }
+  } catch (error) {
+    console.error('Error al obtener registros de asistencia:', error);
+    res.status(500).json({ mensaje: 'Error al obtener registros de asistencia', error: error.message });
+  }
+}));
+
+/**
+ * @description Obtiene el histórico completo de liquidaciones con opciones de filtrado
+ * @route GET /api/liquidaciones-sueldo/historico
+ * @access Admin
+ * @param {string} [req.query.desde] - Fecha de inicio (YYYY-MM-DD)
+ * @param {string} [req.query.hasta] - Fecha de fin (YYYY-MM-DD)
+ * @param {string} [req.query.estado] - Estado de las liquidaciones a filtrar
+ * @param {string} [req.query.empleado] - ID del empleado para filtrar
+ * @param {string} [req.query.empresa] - ID de la empresa para filtrar
+ * @returns {Array} Lista histórica de liquidaciones que cumplen con los filtros
+ */
+router.get('/historico', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
+  try {
+    const { desde, hasta, estado, empleado, empresa } = req.query;
+    
+    const filtro = {};
+    
+    // Aplicar filtro de rango de fechas
+    if (desde || hasta) {
+      filtro.fecha = {};
+      if (desde) filtro.fecha.$gte = new Date(desde);
+      if (hasta) filtro.fecha.$lte = new Date(hasta);
+    }
+    
+    // Filtro por estado
+    if (estado) filtro.estado = estado;
+    
+    // Filtro por empleado específico
+    if (empleado) filtro.empleado = empleado;
+    
+    // Si se filtra por empresa, primero obtenemos los IDs de los empleados de esa empresa
+    if (empresa) {
+      const empleadosEmpresa = await Empleado.find({ empresa }).select('_id');
+      const empleadosIds = empleadosEmpresa.map(e => e._id);
+      filtro.empleado = { $in: empleadosIds };
+    }
+    
+    // Realizar la consulta con los filtros aplicados
+    const liquidaciones = await LiquidacionSueldo.find(filtro)
+      .populate('empleado', 'nombre rut cargo sueldoBase')
+      .populate({
+        path: 'empleado',
+        populate: { path: 'empresa', select: 'nombre rut' }
+      })
+      .populate('descuentos')
+      .populate('aprobadoPor', 'nombre')
+      .sort({ fecha: -1 });
+    
+    // Incluir estadísticas básicas en la respuesta
+    const estadisticas = {
+      total: liquidaciones.length,
+      totalPorEstado: {
+        pendiente: liquidaciones.filter(l => l.estado === 'pendiente').length,
+        aprobado: liquidaciones.filter(l => l.estado === 'aprobado').length,
+        rechazado: liquidaciones.filter(l => l.estado === 'rechazado').length,
+        pagado: liquidaciones.filter(l => l.estado === 'pagado').length
+      },
+      montoTotal: liquidaciones.reduce((sum, l) => sum + l.sueldoNeto, 0)
+    };
+    
+    res.json({
+      liquidaciones,
+      estadisticas
+    });
+  } catch (error) {
+    console.error('Error al obtener histórico de liquidaciones:', error);
+    res.status(500).json({ mensaje: 'Error al obtener histórico de liquidaciones', error: error.message });
+  }
+}));
+
 module.exports = router;

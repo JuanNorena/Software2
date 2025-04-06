@@ -1,5 +1,6 @@
 /**
  * @fileoverview Servicio para la generación y cálculo de liquidaciones de sueldo
+ * @author Juan Sebastian Noreña
  * @version 1.0.0
  */
 

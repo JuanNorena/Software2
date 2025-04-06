@@ -15,6 +15,8 @@ if (!process.env.JWT_SECRET) {
 
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
+const fs = require('fs-extra');
 
 // Importar rutas
 const empresaRoutes = require('./Controller/EmpresaController');
@@ -42,6 +44,15 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Directorio para archivos temporales (como PDFs)
+app.use('/temp', express.static(path.join(__dirname, '../temp')));
+
+// Asegurar que el directorio temporal para PDFs exista
+const tempPdfDir = path.join(__dirname, '../temp/pdf');
+if (!fs.existsSync(tempPdfDir)) {
+  fs.mkdirSync(tempPdfDir, { recursive: true });
+}
 
 /**
  * Conexión a MongoDB usando la clase Database

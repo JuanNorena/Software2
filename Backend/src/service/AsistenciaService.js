@@ -232,6 +232,150 @@ class AsistenciaService {
       throw error;
     }
   }
+
+  /**
+   * Obtiene el detalle de días y horas trabajadas de un empleado en un periodo específico
+   * @param {string} empleadoId - ID del empleado
+   * @param {number} mes - Mes (1-12) 
+   * @param {number} anio - Año
+   * @returns {Promise<Object>} Detalles de días y horas trabajadas
+   */
+  async obtenerDetalleAsistenciaPeriodo(empleadoId, mes, anio) {
+    try {
+      // Validar que el empleado existe
+      const empleado = await Empleado.findById(empleadoId);
+      if (!empleado) {
+        throw new Error('Empleado no encontrado');
+      }
+      
+      // Obtener el periodo (inicio y fin del mes)
+      const { inicio, fin } = FinancialUtils.obtenerPeriodoMensual(mes, anio);
+      
+      // Obtener registros de asistencia
+      const registros = await RegistroAsistencia.find({
+        empleado: empleadoId,
+        fecha: {
+          $gte: inicio,
+          $lt: fin
+        }
+      }).sort({ fecha: 1 });
+      
+      // Calcular días trabajados, horas totales, horas extras, etc.
+      const diasDelMes = new Date(anio, mes, 0).getDate(); // Obtener número de días del mes
+      const diasLaborables = FinancialUtils.DIAS_LABORABLES; // Días laborables promedio
+      const diasTrabajados = registros.length;
+      
+      let totalHoras = 0;
+      let horasRegulares = 0;
+      let horasExtra = 0;
+      let diasConHorasExtra = 0;
+      const horasEsperadasPorDia = FinancialUtils.HORAS_JORNADA;
+      
+      // Contabilizar tipo de días
+      const diasPorTipo = {
+        completos: 0,
+        incompletos: 0,
+        ausencias: 0
+      };
+      
+      // Mapeo de días de la semana (0 = domingo, 1 = lunes, ..., 6 = sábado)
+      const diasSemana = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+      
+      // Registros procesados para devolver al cliente
+      const registrosProcesados = [];
+      
+      // Crear mapa de fechas para identificar rápidamente días trabajados
+      const fechasRegistradas = new Set(registros.map(r => new Date(r.fecha).toISOString().split('T')[0]));
+      
+      // Procesar cada día del mes
+      for (let dia = 1; dia <= diasDelMes; dia++) {
+        const fecha = new Date(anio, mes - 1, dia);
+        const fechaStr = fecha.toISOString().split('T')[0];
+        const diaSemana = diasSemana[fecha.getDay()];
+        
+        // Verificar si es día laborable (lunes a viernes)
+        const esLaborable = fecha.getDay() > 0 && fecha.getDay() < 6;
+        
+        // Datos del día
+        const datoDia = {
+          fecha,
+          diaSemana,
+          esLaborable
+        };
+        
+        // Si hay registro de asistencia para este día
+        if (fechasRegistradas.has(fechaStr)) {
+          const registro = registros.find(r => new Date(r.fecha).toISOString().split('T')[0] === fechaStr);
+          datoDia.horaEntrada = registro.horaEntrada;
+          datoDia.horaSalida = registro.horaSalida;
+          datoDia.totalHoras = registro.totalHorasTrabajadas;
+          datoDia.asistio = true;
+          
+          totalHoras += registro.totalHorasTrabajadas;
+          
+          if (registro.totalHorasTrabajadas >= horasEsperadasPorDia) {
+            diasPorTipo.completos++;
+            
+            if (registro.totalHorasTrabajadas > horasEsperadasPorDia) {
+              horasRegulares += horasEsperadasPorDia;
+              horasExtra += (registro.totalHorasTrabajadas - horasEsperadasPorDia);
+              diasConHorasExtra++;
+              datoDia.tieneHorasExtra = true;
+              datoDia.horasExtra = registro.totalHorasTrabajadas - horasEsperadasPorDia;
+            } else {
+              horasRegulares += registro.totalHorasTrabajadas;
+              datoDia.tieneHorasExtra = false;
+            }
+          } else {
+            diasPorTipo.incompletos++;
+            horasRegulares += registro.totalHorasTrabajadas;
+            datoDia.tieneHorasExtra = false;
+          }
+        } else {
+          // No hay registro para este día
+          datoDia.asistio = false;
+          datoDia.totalHoras = 0;
+          
+          // Solo contar ausencias en días laborables
+          if (esLaborable) {
+            diasPorTipo.ausencias++;
+          }
+        }
+        
+        registrosProcesados.push(datoDia);
+      }
+      
+      return {
+        empleado: {
+          id: empleado._id,
+          nombre: empleado.nombre,
+          cargo: empleado.cargo
+        },
+        periodo: {
+          mes,
+          anio,
+          inicio,
+          fin,
+          diasDelMes,
+          diasLaborables
+        },
+        resumen: {
+          diasTrabajados,
+          diasCompletos: diasPorTipo.completos,
+          diasIncompletos: diasPorTipo.incompletos,
+          diasAusentes: diasPorTipo.ausencias,
+          horasTotales: parseFloat(totalHoras.toFixed(2)),
+          horasRegulares: parseFloat(horasRegulares.toFixed(2)),
+          horasExtras: parseFloat(horasExtra.toFixed(2)),
+          diasConHorasExtra
+        },
+        registrosDiarios: registrosProcesados
+      };
+    } catch (error) {
+      console.error('Error al obtener detalle de asistencia:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new AsistenciaService();

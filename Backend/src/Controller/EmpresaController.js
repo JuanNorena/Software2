@@ -4,12 +4,6 @@
  * @version 1.0.0
  */
 
-/**
- * @fileoverview Controlador para gestionar las operaciones CRUD de empresas
- * @author Juan Sebastian Noreña
- * @version 1.0.0
- */
-
 const express = require('express');
 const router = express.Router();
 const Empresa = require('../Model/Empresa');
