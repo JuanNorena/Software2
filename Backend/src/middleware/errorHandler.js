@@ -1,7 +1,7 @@
 /**
  * @fileoverview Middleware para manejar errores de forma centralizada
  * @author Juan Sebastian Noreña
- * @version 1.0.0
+ * @version 1.0.1
  */
 
 /**

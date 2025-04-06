@@ -1,7 +1,7 @@
 /**
  * @fileoverview Utilidades para cálculos financieros y operaciones comunes
  * @author Juan Sebastian Noreña
- * @version 1.0.0
+ * @version 1.0.1
  */
 
 /**

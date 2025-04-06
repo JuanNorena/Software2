@@ -1,7 +1,7 @@
 /**
  * @fileoverview Script para inicializar datos de prueba en la base de datos
  * @author Juan Sebastian Noreña
- * @version 1.0.0
+ * @version 1.0.1
  */
 
 const Empresa = require('../Model/Empresa');
@@ -18,6 +18,21 @@ async function initData() {
     // Verificar si ya existe una empresa
     const empresasCount = await Empresa.countDocuments();
     
+    // Verificar si ya existe el usuario admin
+    const adminExists = await Usuario.findOne({ username: 'admin' });
+    
+    if (adminExists) {
+      console.log('✅ Usuario administrador ya existe');
+      
+      // Actualizar la contraseña del admin para asegurar que es la esperada
+      if (process.env.NODE_ENV === 'development') {
+        // Solo en desarrollo, actualizar la contraseña para pruebas
+        adminExists.password = await bcrypt.hash("123admin", 10);
+        await adminExists.save();
+        console.log('✅ Contraseña de administrador actualizada a "123admin" para pruebas');
+      }
+    }
+    
     if (empresasCount === 0) {
       // Crear empresa de prueba
       const empresaPrueba = new Empresa({
@@ -33,20 +48,25 @@ async function initData() {
       console.log('Datos de la empresa:');
       console.log(JSON.stringify(empresaGuardada, null, 2));
       
-      // Crear usuario administrador
-      const usuarioAdmin = new Usuario({
-        username: "admin",
-        password: await bcrypt.hash("admin123", 10),
-        rol: "ADMIN"
-      });
-      
-      await usuarioAdmin.save();
-      console.log('✅ Usuario administrador creado (usuario: admin, contraseña: admin123)');
+      // Crear usuario administrador con la contraseña esperada "123admin"
+      if (!adminExists) {
+        const usuarioAdmin = new Usuario({
+          username: "admin",
+          email: "admin@personalpay.com", 
+          password: await bcrypt.hash("123admin", 10),
+          rol: "ADMIN",
+          enabled: true,
+          accountNonExpired: true,
+          accountNonLocked: true,
+          credentialsNonExpired: true
+        });
+        
+        await usuarioAdmin.save();
+        console.log('✅ Usuario administrador creado (usuario: admin, contraseña: 123admin)');
+      }
     } else {
       const empresa = await Empresa.findOne();
       console.log('✅ Empresa ya existe con ID:', empresa._id);
-      console.log('Datos de la empresa para pruebas:');
-      console.log(JSON.stringify(empresa, null, 2));
     }
   } catch (error) {
     console.error('❌ Error al inicializar datos:', error);

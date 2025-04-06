@@ -1,7 +1,7 @@
 /**
  * @fileoverview Servicio para gestionar las notificaciones a los empleados
  * @author Juan Sebastian Noreña
- * @version 1.0.0
+ * @version 1.0.1
  */
 
 const Empleado = require('../Model/Empleado');
