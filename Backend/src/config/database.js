@@ -21,7 +21,8 @@ class Database {
      * URI de conexión a MongoDB
      * @type {string}
      */
-    this.mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/personalpay';
+    // Usar explícitamente 127.0.0.1 en lugar de localhost para evitar problemas de resolución IPv6
+    this.mongoURI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/personalpay';
     
     /**
      * Opciones de configuración para la conexión a MongoDB
@@ -29,7 +30,9 @@ class Database {
      */
     this.options = {
       useNewUrlParser: true,
-      useUnifiedTopology: true
+      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 5000, // Timeout después de 5 segundos
+      family: 4 // Forzar a usar IPv4 en lugar de intentar IPv6
     };
   }
 
