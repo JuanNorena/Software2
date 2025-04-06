@@ -120,6 +120,7 @@ usuarioSchema.pre('save', async function(next) {
  * @returns {Promise<boolean>} Verdadero si la contraseña coincide
  */
 usuarioSchema.methods.comparePassword = async function(candidatePassword) {
+  console.log('Iniciando comparación de contraseñas...');
   try {
     console.log('Comparando contraseña');
     
@@ -148,6 +149,8 @@ usuarioSchema.methods.comparePassword = async function(candidatePassword) {
     }
     
     // Comparar contraseñas con bcrypt
+    console.log(this.password);
+    console.log(candidatePassword);
     try {
       const isMatch = await bcrypt.compare(candidatePassword, this.password);
       console.log(`Resultado de la comparación bcrypt: ${isMatch}`);

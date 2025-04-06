@@ -1,50 +1,82 @@
 <div class="text-center; border: 2px solid #333;">
   <!-- Mensaje de bienvenida -->
-  <div class="text-center" style="font: 1em Inria-serif; font-size: 26px; font-weight: bold; color: #00306e; margin-bottom: 5px;">
+  <div class="text-center"
+    style="font: 1em Inria-serif; font-size: 26px; font-weight: bold; color: #00306e; margin-bottom: 5px;">
     <h3>Bienvenido al Portal de Empleados</h3>
   </div>
 </div>
 
 <!-- Contenedor principal con margen superior reducido -->
-<div class="container d-flex justify-content-center align-items-center" style="margin-top: 20px; margin-bottom: 20px;">
-  
+<div class="container d-flex justify-content-center align-items-center"
+  style="margin-top: 20px; margin-bottom: 20px;">
+
   <!-- Imagen ilustrativa del login -->
-  <img src="/login.png" alt="" height="420px" style="border: 2px solid #333;">
+  <img src="/login.png" alt height="420px" style="border: 2px solid #333;">
 
   <!-- Tarjeta que contiene el formulario de inicio de sesión -->
-  <div class="card p-4" style="width: 500px; height: 420px; background-color: #D9D9D9; border: 2px solid #333;">
-    
+  <div class="card p-4"
+    style="width: 500px; height: 420px; background-color: #D9D9D9; border: 2px solid #333;">
+
     <!-- Encabezado con el título "Iniciar sesión" -->
     <div class="card-header text-center" style="font: 1em Inria-serif;">
       <h3>Iniciar sesión</h3>
     </div>
 
     <div class="card-body">
-      <!-- Formulario de inicio de sesión con Angular FormGroup -->
+      <!-- Actualiza el formulario en login.component.html para mostrar errores y carga -->
       <form [formGroup]="loginForm" (ngSubmit)="login()" novalidate>
-
         <!-- Campo para ingresar el nombre de usuario -->
         <div class="mb-3">
           <label for="usuario" class="form-label">Nombre de usuario</label>
-          <input type="text" id="usuario" formControlName="usuario" class="form-control" placeholder="Ingresa tu usuario">
+          <input type="text" id="usuario" formControlName="usuario"
+            class="form-control" placeholder="Ingresa tu usuario">
+          <div
+            *ngIf="loginForm.get('usuario')?.invalid && loginForm.get('usuario')?.touched"
+            class="text-danger">
+            Usuario es requerido
+          </div>
         </div>
 
         <!-- Campo para ingresar la contraseña -->
         <div class="mb-3">
           <label for="password" class="form-label">Contraseña</label>
-          <input type="password" id="password" formControlName="password" class="form-control" placeholder="Ingresa tu contraseña">
+          <input type="password" id="password" formControlName="password"
+            class="form-control" placeholder="Ingresa tu contraseña">
+          <div
+            *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.touched"
+            class="text-danger">
+            <span
+              *ngIf="loginForm.get('password')?.errors?.['required']">Contraseña
+              es requerida</span>
+            <span
+              *ngIf="loginForm.get('password')?.errors?.['minlength']">Mínimo 7
+              caracteres</span>
+            <span
+              *ngIf="loginForm.get('password')?.errors?.['maxlength']">Máximo 10
+              caracteres</span>
+          </div>
+        </div>
+
+        <!-- Mensaje de error general -->
+        <div *ngIf="errorMessage" class="alert alert-danger">
+          {{ errorMessage }}
         </div>
 
         <!-- Botón para enviar el formulario (Ingresar) -->
         <div class="d-grid">
-          <button type="submit" class="btn" style="background-color: #00306e; color: white; border: 2px solid white;" [disabled]="loginForm.invalid">
+          <button type="submit" class="btn"
+            style="background-color: #00306e; color: white; border: 2px solid white;"
+            [disabled]="loginForm.invalid || loading">
+            <span *ngIf="loading" class="spinner-border spinner-border-sm me-1"
+              role="status" aria-hidden="true"></span>
             Ingresar
           </button>
         </div>
 
         <!-- Botón para cancelar el formulario -->
         <div class="d-grid">
-          <button type="button" class="btn" style="background-color: #00306e; color: white; border: 2px solid white;">
+          <button type="button" class="btn"
+            style="background-color: #00306e; color: white; border: 2px solid white;">
             Cancelar
           </button>
         </div>
@@ -53,14 +85,16 @@
         <div class="d-flex justify-content-between mt-3 align-items-center">
           <!-- Checkbox -->
           <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="rememberUser" formControlName="rememberUser">
-            <label class="form-check-label" for="rememberUser">Recordar usuario</label>
+            <input class="form-check-input" type="checkbox" id="rememberUser"
+              formControlName="rememberUser">
+            <label class="form-check-label" for="rememberUser">Recordar
+              usuario</label>
           </div>
-          
+
           <!-- Olvido Contraseña-->
-          <a routerLink="/password-recovery" 
-             class="text-primary fw-medium"
-             style="text-decoration: underline; cursor: pointer;">
+          <a routerLink="/password-recovery"
+            class="text-primary fw-medium"
+            style="text-decoration: underline; cursor: pointer;">
             Olvidé mi contraseña
           </a>
         </div>
