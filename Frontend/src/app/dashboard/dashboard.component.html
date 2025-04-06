@@ -1,0 +1,27 @@
+<div class="container mt-5">
+    <div class="text-center mb-4">
+      <h2>Bienvenido, {{ nombreUsuario }}</h2>
+      <p><strong>Rol:</strong> {{ rolUsuario }}</p>
+    </div>
+  
+    <!-- Contenido para ADMIN -->
+    <div *ngIf="rolUsuario === 'ADMIN'" class="card p-4 mb-3 shadow border-primary">
+      <h4 class="text-primary">Panel de Administración</h4>
+      <ul>
+        <li>Gestión de empleados</li>
+        <li>Reportes de empresa</li>
+        <li>Configuraciones del sistema</li>
+      </ul>
+    </div>
+  
+    <!-- Contenido para EMPLEADO -->
+    <div *ngIf="rolUsuario === 'EMPLEADO'" class="card p-4 shadow border-success">
+      <h4 class="text-success">Panel de Empleado</h4>
+      <ul>
+        <li>Ver recibos de sueldo</li>
+        <li>Actualizar perfil</li>
+        <li>Solicitar vacaciones</li>
+      </ul>
+    </div>
+  </div>
+  
