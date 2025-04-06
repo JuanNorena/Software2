@@ -122,11 +122,16 @@ router.post('/login', asyncHandler(async (req, res) => {
   try {
     const { username, password, recordarme } = req.body;
     
+    console.log(`Solicitud de login recibida para usuario: ${username}`);
+    
     if (!username || !password) {
+      console.log('Solicitud sin usuario o contraseña');
       return res.status(400).json({ message: 'Usuario y contraseña son requeridos' });
     }
     
     const resultado = await AuthService.login(username, password, !!recordarme);
+    
+    console.log(`Login exitoso para usuario: ${username}, rol: ${resultado.usuario.rol}`);
     
     res.json({
       message: 'Inicio de sesión exitoso',
@@ -134,7 +139,7 @@ router.post('/login', asyncHandler(async (req, res) => {
       usuario: resultado.usuario
     });
   } catch (error) {
-    console.error('Error en login:', error);
+    console.error(`Error en login: ${error.message}`);
     res.status(401).json({ message: error.message });
   }
 }));

@@ -39,28 +39,40 @@ class AuthService {
    * @throws {Error} Si las credenciales son inválidas
    */
   async login(username, password, recordarme = false) {
+    console.log(`Intento de login con username: ${username}`);
+    
     // Buscar el usuario por nombre de usuario
     const usuario = await Usuario.findOne({ username });
+    
     if (!usuario) {
+      console.log(`Usuario no encontrado: ${username}`);
       throw new Error('Credenciales inválidas');
     }
-
+  
+    console.log(`Usuario encontrado con ID: ${usuario._id}, rol: ${usuario.rol}`);
+  
     // Verificar si la cuenta está bloqueada temporalmente
     if (usuario.fechaBloqueo && usuario.fechaBloqueo > new Date()) {
       const minutosRestantes = Math.ceil((usuario.fechaBloqueo - new Date()) / (1000 * 60));
+      console.log(`Cuenta bloqueada por ${minutosRestantes} minutos más`);
       throw new Error(`Cuenta bloqueada temporalmente. Intente nuevamente en ${minutosRestantes} minutos`);
     }
-
+  
     // Verificar si la cuenta está habilitada
-    if (!usuario.enabled || !usuario.accountNonLocked || !usuario.accountNonExpired || !usuario.credentialsNonExpired) {
-      throw new Error('Cuenta deshabilitada o bloqueada');
+    if (usuario.enabled === false) {
+      console.log(`Cuenta deshabilitada para usuario: ${username}`);
+      throw new Error('Cuenta deshabilitada. Contacte al administrador');
     }
-
-    // Verificar la contraseña
+  
+    // Verificar la contraseña - añadimos logging para depuración
+    console.log(`Verificando contraseña para usuario ${username}`);
     const isPasswordValid = await usuario.comparePassword(password);
+    console.log(`Resultado de verificación de contraseña: ${isPasswordValid ? 'válida' : 'inválida'}`);
+    
     if (!isPasswordValid) {
       // Incrementar contador de intentos fallidos
-      usuario.intentosFallidos += 1;
+      usuario.intentosFallidos = (usuario.intentosFallidos || 0) + 1;
+      console.log(`Intento fallido ${usuario.intentosFallidos} para usuario: ${username}`);
       
       // Si alcanza el límite, bloquear la cuenta temporalmente (30 minutos)
       if (usuario.intentosFallidos >= 5) {
@@ -75,13 +87,15 @@ class AuthService {
       await usuario.save();
       throw new Error('Credenciales inválidas');
     }
-
+  
     // Resetear contador de intentos fallidos
     usuario.intentosFallidos = 0;
     usuario.fechaBloqueo = null;
     usuario.ultimoAcceso = new Date();
     await usuario.save();
-
+    
+    console.log(`Login exitoso para usuario: ${username}`);
+  
     // Obtener información adicional según el rol
     let userData = {};
     if (usuario.rol === 'EMPLEADO' && usuario.empleado) {
@@ -104,7 +118,7 @@ class AuthService {
         }
       }
     }
-
+  
     // Generar token JWT con duración según recordarme
     const duracionToken = recordarme ? '30d' : '24h';
     
@@ -118,7 +132,7 @@ class AuthService {
       process.env.JWT_SECRET || 'personalpay_secret_key',
       { expiresIn: duracionToken }
     );
-
+  
     return {
       token,
       usuario: {

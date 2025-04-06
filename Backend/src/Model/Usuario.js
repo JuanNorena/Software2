@@ -110,15 +110,33 @@ usuarioSchema.pre('save', async function(next) {
 });
 
 /**
- * Método para comparar contraseñas
- * @function
- * @name comparePassword
- * @memberof UsuarioSchema.methods
+ * Compara la contraseña proporcionada con la contraseña hasheada almacenada del usuario
  * @param {string} candidatePassword - Contraseña a comparar
  * @returns {Promise<boolean>} Verdadero si la contraseña coincide
  */
 usuarioSchema.methods.comparePassword = async function(candidatePassword) {
-  return bcrypt.compare(candidatePassword, this.password);
+  try {
+    console.log('Comparando contraseña');
+    // Asegurarse de que la contraseña candidata sea una cadena
+    if (typeof candidatePassword !== 'string') {
+      console.error('La contraseña proporcionada no es una cadena');
+      return false;
+    }
+    
+    // Verificar que la contraseña almacenada esté hasheada
+    if (!this.password || !this.password.startsWith('$2')) {
+      console.error('La contraseña almacenada no está hasheada correctamente');
+      return false;
+    }
+    
+    // Comparar contraseñas
+    const isMatch = await bcrypt.compare(candidatePassword, this.password);
+    console.log(`Resultado de la comparación: ${isMatch}`);
+    return isMatch;
+  } catch (error) {
+    console.error('Error al comparar contraseñas:', error);
+    return false;
+  }
 };
 
 /**
