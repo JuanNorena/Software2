@@ -1,7 +1,7 @@
 /**
  * @fileoverview Servicio para la generación y manejo de documentos PDF
  * @author Juan Sebastian Noreña
- * @version 1.0.0
+ * @version 1.0.1
  */
 
 const PDFDocument = require('pdfkit');

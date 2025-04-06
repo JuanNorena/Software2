@@ -1,7 +1,7 @@
 /**
  * @fileoverview Modelo de datos para los registros de asistencia de empleados
  * @author Juan Sebastian Noreña
- * @version 1.0.0
+ * @version 1.0.1
  */
 
 const mongoose = require('mongoose');

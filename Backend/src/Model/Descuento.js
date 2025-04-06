@@ -1,7 +1,7 @@
 /**
  * @fileoverview Modelo de datos para los descuentos aplicados a las liquidaciones de sueldo
  * @author Juan Sebastian Noreña
- * @version 1.0.0
+ * @version 1.0.1
  */
 
 const mongoose = require('mongoose');

@@ -1,7 +1,7 @@
 /**
  * @fileoverview Script para inicializar datos de prueba en la base de datos
  * @author Juan Sebastian Noreña
- * @version 1.0.0
+ * @version 1.0.1
  */
 
 const Empresa = require('../Model/Empresa');

@@ -1,6 +1,7 @@
 /**
  * @fileoverview Programador de tareas de limpieza para archivos temporales
- * @version 1.0.0
+ * @author Juan Sebastian Noreña
+ * @version 1.0.1
  */
 
 const fs = require('fs-extra');

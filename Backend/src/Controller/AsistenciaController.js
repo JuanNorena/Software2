@@ -1,7 +1,7 @@
 /**
  * @fileoverview Controlador para gestionar las operaciones relacionadas con asistencia de empleados
  * @author Juan Sebastian Noreña
- * @version 1.0.0
+ * @version 1.0.1
  */
 
 const express = require('express');

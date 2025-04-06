@@ -1,7 +1,7 @@
 /**
  * @fileoverview Servicio para manejar la autenticación y gestión de usuarios
  * @author Juan Sebastian Noreña
- * @version 1.0.0
+ * @version 1.0.1
  */
 
 const Usuario = require('../Model/Usuario');

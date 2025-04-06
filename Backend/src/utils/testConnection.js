@@ -1,7 +1,7 @@
 /**
  * @fileoverview Utilidad para probar la conexión a MongoDB
  * @author Juan Sebastian Noreña
- * @version 1.0.0
+ * @version 1.0.1
  */
 
 // Cargar variables de entorno

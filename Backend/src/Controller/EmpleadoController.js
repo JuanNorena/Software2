@@ -1,7 +1,7 @@
 /**
  * @fileoverview Controlador para gestionar las operaciones CRUD de empleados y empresas
  * @author Juan Sebastian Noreña
- * @version 1.0.0
+ * @version 1.0.1
  */
 
 const express = require('express');
