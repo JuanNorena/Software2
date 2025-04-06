@@ -47,8 +47,14 @@ app.use(express.urlencoded({ extended: true }));
  * Conexión a MongoDB usando la clase Database
  */
 const database = require('./config/database');
+const { initData } = require('./utils/initData');
+
 database.connect()
-  .then(() => console.log('Conexión a MongoDB establecida usando la clase Database'))
+  .then(() => {
+    console.log('Conexión a MongoDB establecida usando la clase Database');
+    // Inicializar datos de prueba
+    return initData();
+  })
   .catch(err => console.error('Error al conectar a MongoDB:', err));
 
 /**
