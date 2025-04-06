@@ -8,26 +8,52 @@ const express = require('express');
 const router = express.Router();
 const PagoContabilidadProvisional = require('../Model/PagoContabilidadProvisional');
 const LiquidacionSueldo = require('../Model/LiquidacionSueldo');
+const PagoService = require('../service/PagoService');
+const BaseController = require('./BaseController');
 const asyncHandler = require('../middleware/asyncHandler');
+const { authenticateUser, authorizeRoles } = require('../middleware/authMiddleware');
 
 /**
  * @description Obtiene todos los pagos de contabilidad provisional
  * @route GET /api/pagos-contabilidad-provisional
+ * @access Admin
  * @returns {Array} Lista de pagos de contabilidad provisional
  */
-router.get('/', asyncHandler(async (req, res) => {
-  const pagos = await PagoContabilidadProvisional.find()
-    .populate('liquidacionSueldo', 'fecha sueldoBruto sueldoNeto')
-    .populate({
-      path: 'liquidacionSueldo',
-      populate: { path: 'empleado', select: 'nombre rut cargo' }
-    });
-  res.json(pagos);
+router.get('/', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
+  try {
+    const pagos = await PagoService.obtenerTodosPagosProvisionales();
+    BaseController.sendResponse(res, pagos);
+  } catch (error) {
+    BaseController.handleError(res, error);
+  }
+}));
+
+/**
+ * @description Genera informe de pagos previsionales
+ * @route GET /api/pagos-contabilidad-provisional/informe/:mes/:anio
+ * @access Admin
+ * @param {number} mes - Mes (1-12)
+ * @param {number} anio - Año
+ * @returns {Object} Informe generado
+ */
+router.get('/informe/:mes/:anio', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
+  try {
+    const { mes, anio } = req.params;
+    const informe = await PagoService.generarInformePrevisional(
+      parseInt(mes),
+      parseInt(anio)
+    );
+    
+    BaseController.sendResponse(res, informe, 'Informe generado correctamente');
+  } catch (error) {
+    BaseController.handleError(res, error, 400);
+  }
 }));
 
 /**
  * @description Obtiene un pago de contabilidad provisional por su ID
  * @route GET /api/pagos-contabilidad-provisional/:id
+ * @access Private
  * @param {string} id - ID del pago de contabilidad provisional
  * @returns {Object} Pago de contabilidad provisional encontrado
  */
@@ -49,6 +75,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
 /**
  * @description Obtiene pagos de contabilidad provisional por liquidación
  * @route GET /api/pagos-contabilidad-provisional/liquidacion/:liquidacionId
+ * @access Private
  * @param {string} liquidacionId - ID de la liquidación de sueldo
  * @returns {Array} Lista de pagos asociados a la liquidación
  */
@@ -66,7 +93,14 @@ router.get('/liquidacion/:liquidacionId', asyncHandler(async (req, res) => {
 /**
  * @description Crea un nuevo pago de contabilidad provisional
  * @route POST /api/pagos-contabilidad-provisional
+ * @access Admin
  * @param {Object} req.body - Datos del pago de contabilidad provisional
+ * @param {string} req.body.liquidacionSueldo - ID de la liquidación
+ * @param {Date} req.body.fechaPago - Fecha del pago
+ * @param {string} req.body.periodoCorrespondiente - Período al que corresponde
+ * @param {number} req.body.totalPago - Monto total del pago
+ * @param {number} req.body.totalPagoPension - Monto para pensión
+ * @param {number} req.body.totalPagoSalud - Monto para salud
  * @returns {Object} Nuevo pago de contabilidad provisional creado
  */
 router.post('/', asyncHandler(async (req, res) => {
@@ -92,6 +126,7 @@ router.post('/', asyncHandler(async (req, res) => {
 /**
  * @description Actualiza un pago de contabilidad provisional existente
  * @route PUT /api/pagos-contabilidad-provisional/:id
+ * @access Admin
  * @param {string} id - ID del pago de contabilidad provisional
  * @param {Object} req.body - Datos actualizados del pago
  * @returns {Object} Pago de contabilidad provisional actualizado
@@ -125,6 +160,7 @@ router.put('/:id', asyncHandler(async (req, res) => {
 /**
  * @description Elimina un pago de contabilidad provisional
  * @route DELETE /api/pagos-contabilidad-provisional/:id
+ * @access Admin
  * @param {string} id - ID del pago de contabilidad provisional
  * @returns {Object} Mensaje de confirmación
  */

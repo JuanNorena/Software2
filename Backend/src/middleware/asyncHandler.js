@@ -1,5 +1,5 @@
 /**
- * Middleware para manejar funciones asíncronas en rutas Express
+ * @fileoverview Middleware para manejar funciones asíncronas en rutas Express
  * Envuelve las funciones de controlador para capturar errores y pasarlos al middleware de manejo de errores
  * 
  * @param {Function} fn - Función asíncrona del controlador

@@ -1,11 +1,16 @@
 /**
  * @fileoverview Servicio para gestionar el registro de asistencia de empleados
+ * @author Juan Sebastian Noreña
  * @version 1.0.0
  */
 
 const RegistroAsistencia = require('../Model/RegistroAsistencia');
 const Empleado = require('../Model/Empleado');
 
+/**
+ * Servicio para gestionar asistencias de empleados
+ * @class AsistenciaService
+ */
 class AsistenciaService {
   /**
    * Registra la entrada de un empleado

@@ -7,11 +7,14 @@ const LiquidacionSueldo = require('../Model/LiquidacionSueldo');
 const Empleado = require('../Model/Empleado');
 const RegistroAsistencia = require('../Model/RegistroAsistencia');
 const Descuento = require('../Model/Descuento');
-const PagoSueldo = require('../Model/PagoSueldo');
-const PagoContabilidadProvisional = require('../Model/PagoContabilidadProvisional');
 const NotificacionService = require('./NotificacionService');
 const FinancialUtils = require('../utils/FinancialUtils');
+const PagoService = require('./PagoService');
 
+/**
+ * Servicio para gestionar liquidaciones de sueldos
+ * @class LiquidacionService
+ */
 class LiquidacionService {
   /**
    * Constantes para cálculos
@@ -27,6 +30,7 @@ class LiquidacionService {
    * @param {number} mes - Mes para el cual generar la liquidación (1-12)
    * @param {number} anio - Año para el cual generar la liquidación
    * @returns {Promise<Object>} Liquidación generada
+   * @throws {Error} Si el empleado no existe o ya tiene liquidación para el período
    */
   async generarLiquidacion(empleadoId, mes, anio) {
     try {
@@ -141,6 +145,7 @@ class LiquidacionService {
    * @param {string} liquidacionId - ID de la liquidación
    * @param {string} aprobadorId - ID del usuario que aprueba
    * @returns {Promise<Object>} Liquidación aprobada
+   * @throws {Error} Si la liquidación no existe o no está en estado pendiente
    */
   async aprobarLiquidacion(liquidacionId, aprobadorId) {
     const liquidacion = await LiquidacionSueldo.findById(liquidacionId);
@@ -169,6 +174,7 @@ class LiquidacionService {
    * @param {string} liquidacionId - ID de la liquidación
    * @param {string} motivo - Motivo del rechazo
    * @returns {Promise<Object>} Liquidación rechazada
+   * @throws {Error} Si la liquidación no existe o no está en estado pendiente
    */
   async rechazarLiquidacion(liquidacionId, motivo) {
     const liquidacion = await LiquidacionSueldo.findById(liquidacionId);
@@ -192,106 +198,11 @@ class LiquidacionService {
    * @param {string} liquidacionId - ID de la liquidación
    * @param {Object} datosPago - Datos para el pago (método, banco, etc.)
    * @returns {Promise<Object>} Información del pago realizado
+   * @throws {Error} Si la liquidación no existe o no está aprobada
    */
   async procesarPagoLiquidacion(liquidacionId, datosPago) {
-    // 1. Verificar que la liquidación exista y esté aprobada
-    const liquidacion = await LiquidacionSueldo.findById(liquidacionId)
-        .populate('empleado');
-        
-    if (!liquidacion) {
-      throw new Error('Liquidación no encontrada');
-    }
-    
-    if (liquidacion.estado !== 'aprobado') {
-      throw new Error('La liquidación debe estar aprobada para procesar el pago');
-    }
-    
-    // 2. Realizar el pago del sueldo
-    const pagoSueldo = await this.crearPagoSueldo(liquidacion, datosPago);
-    
-    // 3. Generar los pagos provisionales (AFP, Salud)
-    const pagoProvisional = await this.generarPagoProvisional(liquidacion);
-    
-    // 4. Actualizar estado de la liquidación
-    liquidacion.estado = 'pagado';
-    await liquidacion.save();
-    
-    // 5. Notificar al empleado sobre el pago realizado
-    await NotificacionService.notificarPagoRealizado(liquidacion.empleado._id, liquidacionId);
-    
-    return {
-      liquidacion,
-      pagoSueldo,
-      pagoProvisional
-    };
-  }
-
-  /**
-   * Crea un nuevo pago de sueldo
-   * @param {Object} liquidacion - Liquidación de sueldo
-   * @param {Object} datosPago - Datos para el pago
-   * @returns {Promise<Object>} Pago creado
-   */
-  async crearPagoSueldo(liquidacion, datosPago) {
-    if (!datosPago.metodoPago || !['cheque', 'deposito'].includes(datosPago.metodoPago)) {
-      throw new Error('El método de pago debe ser "cheque" o "deposito"');
-    }
-    
-    if (!datosPago.banco) {
-      throw new Error('Se debe especificar el banco para el pago');
-    }
-    
-    // Verificar que la liquidación no esté ya pagada
-    if (liquidacion.estado === 'pagado') {
-      throw new Error('Esta liquidación ya ha sido pagada');
-    }
-    
-    const nuevoPago = new PagoSueldo({
-      liquidacionSueldo: liquidacion._id,
-      banco: datosPago.banco,
-      fecha: new Date(),
-      metodoPago: datosPago.metodoPago,
-      monto: liquidacion.sueldoNeto
-    });
-    
-    return await nuevoPago.save();
-  }
-
-  /**
-   * Genera un pago provisional para una liquidación
-   * @param {Object} liquidacion - Liquidación de sueldo
-   * @returns {Promise<Object>} Pago provisional generado
-   */
-  async generarPagoProvisional(liquidacion) {
-    // 1. Obtener los descuentos de la liquidación
-    const descuentos = await Descuento.find({ liquidacionSueldo: liquidacion._id });
-    
-    // 2. Filtrar y calcular montos de AFP y Salud
-    const descuentoAFP = descuentos.find(d => d.concepto === 'AFP');
-    const descuentoSalud = descuentos.find(d => d.concepto === 'Salud');
-    
-    const montoAFP = descuentoAFP ? descuentoAFP.valor : 0;
-    const montoSalud = descuentoSalud ? descuentoSalud.valor : 0;
-    const totalProvisional = montoAFP + montoSalud;
-    
-    if (totalProvisional <= 0) {
-      throw new Error('No hay montos previsionales para generar el pago');
-    }
-    
-    // 3. Crear registro de pago provisional
-    const fecha = new Date();
-    const mesAnio = `${fecha.getMonth() + 1}/${fecha.getFullYear()}`;
-    
-    const nuevoPago = new PagoContabilidadProvisional({
-      liquidacionSueldo: liquidacion._id,
-      fechaPago: fecha,
-      periodoCorrespondiente: mesAnio,
-      totalPago: totalProvisional,
-      totalPagoPension: montoAFP,
-      totalPagoSalud: montoSalud
-    });
-    
-    return await nuevoPago.save();
+    // Delega la funcionalidad al PagoService
+    return await PagoService.procesarPagoLiquidacion(liquidacionId, datosPago);
   }
 
   /**
@@ -299,7 +210,7 @@ class LiquidacionService {
    * @param {string} empresaId - ID de la empresa
    * @param {number} mes - Mes para generar liquidaciones (1-12)
    * @param {number} anio - Año para generar liquidaciones
-   * @returns {Promise<Object>} Resultados de la generación
+   * @returns {Promise<Object>} Resultados de la generación (exitosas y fallidas)
    */
   async generarLiquidacionesEmpresa(empresaId, mes, anio) {
     // Obtener todos los empleados de la empresa
@@ -338,35 +249,8 @@ class LiquidacionService {
    * @returns {Promise<Object>} Informe generado
    */
   async generarInformePrevisional(mes, anio) {
-    const pagos = await this.obtenerPagosPorPeriodo(mes, anio);
-    
-    // Agrupar por AFP e ISAPRE para el informe
-    const resumenAFP = {};
-    const resumenSalud = {};
-    let totalAFP = 0;
-    let totalSalud = 0;
-    
-    pagos.forEach(pago => {
-      // En un sistema real, aquí se obtendría la AFP y la ISAPRE específica de cada empleado
-      // Para este ejemplo, agrupamos todos los pagos
-      totalAFP += pago.totalPagoPension;
-      totalSalud += pago.totalPagoSalud;
-      
-      // Si tuviéramos la información específica de AFP e ISAPRE:
-      // const afp = pago.liquidacionSueldo.empleado.afp || 'Desconocida';
-      // resumenAFP[afp] = (resumenAFP[afp] || 0) + pago.totalPagoPension;
-    });
-    
-    return {
-      periodo: `${mes}/${anio}`,
-      fechaGeneracion: new Date(),
-      cantidadPagos: pagos.length,
-      montoTotalAFP: totalAFP,
-      montoTotalSalud: totalSalud,
-      montoTotal: totalAFP + totalSalud,
-      detalleAFP: resumenAFP,
-      detalleSalud: resumenSalud
-    };
+    // Delega la funcionalidad al PagoService
+    return await PagoService.generarInformePrevisional(mes, anio);
   }
 
   /**

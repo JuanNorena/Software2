@@ -13,11 +13,25 @@ const Empleado = require('../Model/Empleado');
 const asyncHandler = require('../middleware/asyncHandler');
 const { authenticateUser } = require('../middleware/authMiddleware');
 const AuthService = require('../service/AuthService');
+const BaseController = require('./BaseController');
 
 /**
  * @description Registra un nuevo empleado en el sistema con su usuario
  * @route POST /api/auth/register
+ * @access Public
  * @param {Object} req.body - Datos del empleado y usuario a crear
+ * @param {string} req.body.username - Nombre de usuario
+ * @param {string} req.body.password - Contraseña
+ * @param {string} req.body.nombre - Nombre completo del empleado
+ * @param {string} req.body.cargo - Cargo que desempeña
+ * @param {Date} req.body.fechaNacimiento - Fecha de nacimiento
+ * @param {string} req.body.id - Identificador único del empleado
+ * @param {string} req.body.numeroCuentaDigital - Número de cuenta bancaria
+ * @param {string} req.body.profesion - Profesión del empleado
+ * @param {string} req.body.rut - RUT del empleado
+ * @param {number} req.body.sueldoBase - Sueldo base del empleado
+ * @param {string} req.body.empresa - ID de la empresa
+ * @param {boolean} [req.body.esEncargadoPersonal=false] - Si es encargado de personal
  * @returns {Object} Datos del empleado creado y token de autenticación
  */
 router.post('/register', asyncHandler(async (req, res) => {
@@ -89,12 +103,13 @@ router.post('/register', asyncHandler(async (req, res) => {
 }));
 
 /**
- * @description Inicia sesión de un usuario
+ * @description Autentica un usuario y genera un token JWT
  * @route POST /api/auth/login
+ * @access Public
  * @param {Object} req.body - Credenciales de inicio de sesión
  * @param {string} req.body.username - Nombre de usuario
  * @param {string} req.body.password - Contraseña
- * @returns {Object} Token de autenticación y datos del usuario
+ * @returns {Object} Token de autenticación y datos básicos del usuario
  */
 router.post('/login', asyncHandler(async (req, res) => {
   try {
@@ -120,6 +135,7 @@ router.post('/login', asyncHandler(async (req, res) => {
 /**
  * @description Cierra sesión y registra la salida del empleado
  * @route POST /api/auth/logout
+ * @access Private
  * @returns {Object} Mensaje de confirmación y detalles del registro
  */
 router.post('/logout', authenticateUser, asyncHandler(async (req, res) => {

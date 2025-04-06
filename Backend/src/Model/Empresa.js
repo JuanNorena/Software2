@@ -11,9 +11,9 @@ const Schema = mongoose.Schema;
  * Esquema de Mongoose para el modelo de Empresa
  * @typedef {Object} EmpresaSchema
  * @property {string} nombre - Nombre de la empresa
- * @property {string} rut - RUT (Rol Único Tributario) de la empresa
+ * @property {string} rut - RUT de la empresa
  * @property {string} direccion - Dirección física de la empresa
- * @property {string} telefono - Número de teléfono de contacto
+ * @property {string} telefono - Teléfono de contacto
  * @property {string} email - Correo electrónico de contacto
  * @property {Date} fechaCreacion - Fecha de creación del registro
  */

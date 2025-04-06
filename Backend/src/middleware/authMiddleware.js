@@ -1,5 +1,5 @@
 /**
- * @fileoverview Middleware para la autenticación y autorización de usuarios
+ * @fileoverview Middleware para autenticación y autorización de usuarios
  * @author Juan Sebastian Noreña
  * @version 1.0.0
  */
@@ -8,66 +8,75 @@ const jwt = require('jsonwebtoken');
 const Usuario = require('../Model/Usuario');
 
 /**
- * Middleware para verificar si el usuario está autenticado
- * @param {Object} req - Objeto de solicitud Express
- * @param {Object} res - Objeto de respuesta Express
- * @param {Function} next - Función para continuar con el siguiente middleware
+ * Middleware para autenticar usuarios mediante JWT
+ * @param {Request} req - Objeto de solicitud Express
+ * @param {Response} res - Objeto de respuesta Express
+ * @param {Function} next - Función next de Express
+ * @returns {void}
  */
 const authenticateUser = async (req, res, next) => {
   try {
-    // Obtener el token del encabezado de autorización
+    // Verificar si existe token en el header
     const authHeader = req.headers.authorization;
+    
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'No autorizado. Token no proporcionado' });
+      return res.status(401).json({ message: 'Acceso no autorizado, token no proporcionado' });
     }
-
+    
+    // Extraer el token
     const token = authHeader.split(' ')[1];
     
     // Verificar el token
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'personalpay_secret_key');
     
     // Buscar el usuario en la base de datos
-    const usuario = await Usuario.findById(decoded.id);
-    if (!usuario) {
-      return res.status(401).json({ message: 'No autorizado. Usuario no encontrado' });
+    const user = await Usuario.findById(decoded.id);
+    
+    if (!user) {
+      return res.status(401).json({ message: 'Usuario no encontrado' });
     }
-
-    // Verificar si la cuenta está habilitada
-    if (!usuario.enabled || !usuario.accountNonLocked || !usuario.accountNonExpired || !usuario.credentialsNonExpired) {
-      return res.status(401).json({ message: 'Cuenta deshabilitada o bloqueada' });
-    }
-
-    // Agregar la información del usuario al objeto de solicitud
-    req.user = decoded;
+    
+    // Agregar información del usuario al objeto de solicitud
+    req.user = {
+      id: user._id,
+      username: user.username,
+      rol: user.rol,
+      empleadoId: user.empleado
+    };
+    
     next();
   } catch (error) {
-    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
-      return res.status(401).json({ message: 'No autorizado. Token inválido o expirado' });
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ message: 'Token inválido' });
+    } else if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: 'Token expirado' });
     }
-    res.status(500).json({ message: 'Error en la autenticación' });
+    
+    res.status(401).json({ message: 'No autorizado, error de autenticación' });
   }
 };
 
 /**
- * Middleware para verificar si el usuario tiene el rol requerido
- * @param {string[]} roles - Roles permitidos
- * @returns {Function} Middleware para verificar roles
+ * Middleware para autorizar usuarios por roles
+ * @param {Array<string>} roles - Roles permitidos
+ * @returns {Function} Middleware de Express para autorización
  */
 const authorizeRoles = (roles) => {
   return (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({ message: 'No autorizado. Usuario no autenticado' });
+      return res.status(500).json({ 
+        message: 'Error del servidor: usuario no autenticado' 
+      });
     }
-
+    
     if (!roles.includes(req.user.rol)) {
-      return res.status(403).json({ message: 'Prohibido. No tiene permisos para esta acción' });
+      return res.status(403).json({ 
+        message: 'Acceso denegado. No tiene permisos para esta operación' 
+      });
     }
-
+    
     next();
   };
 };
 
-module.exports = {
-  authenticateUser,
-  authorizeRoles
-};
+module.exports = { authenticateUser, authorizeRoles };

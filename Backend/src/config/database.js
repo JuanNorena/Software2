@@ -3,6 +3,7 @@
  * @author Juan Sebastian Noreña
  * @version 1.0.0
  */
+
 const mongoose = require('mongoose');
 
 /**
@@ -34,7 +35,7 @@ class Database {
 
   /**
    * Conecta a la base de datos MongoDB
-   * @returns {Promise} Promesa de conexión
+   * @returns {Promise<void>} Promesa de conexión
    */
   connect() {
     return new Promise((resolve, reject) => {
@@ -52,7 +53,7 @@ class Database {
 
   /**
    * Cierra la conexión a la base de datos
-   * @returns {Promise} Promesa de desconexión
+   * @returns {Promise<void>} Promesa de desconexión
    */
   disconnect() {
     return new Promise((resolve, reject) => {

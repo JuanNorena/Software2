@@ -1,10 +1,15 @@
 /**
  * @fileoverview Servicio para gestionar las notificaciones a los empleados
+ * @author Juan Sebastian Noreña
  * @version 1.0.0
  */
 
 const Empleado = require('../Model/Empleado');
 
+/**
+ * Servicio para gestionar las notificaciones a los empleados
+ * @class NotificacionService
+ */
 class NotificacionService {
   /**
    * Envía una notificación genérica al empleado
@@ -13,6 +18,7 @@ class NotificacionService {
    * @param {string} mensaje - Mensaje a enviar
    * @param {Object} datos - Datos adicionales
    * @returns {Promise<Object>} Resultado de la notificación
+   * @throws {Error} Si el empleado no existe
    */
   async enviarNotificacion(empleadoId, tipo, mensaje, datos = {}) {
     try {

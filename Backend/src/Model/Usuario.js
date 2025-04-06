@@ -11,14 +11,13 @@ const Schema = mongoose.Schema;
 /**
  * Esquema de Mongoose para el modelo de Usuario
  * @typedef {Object} UsuarioSchema
- * @property {string} username - Nombre de usuario para iniciar sesión
- * @property {string} password - Contraseña del usuario (almacenada con hash)
- * @property {string} rol - Rol del usuario (ADMIN o EMPLEADO)
- * @property {boolean} accountNonExpired - Indica si la cuenta no ha expirado
- * @property {boolean} accountNonLocked - Indica si la cuenta no está bloqueada
- * @property {boolean} credentialsNonExpired - Indica si las credenciales no han expirado
- * @property {boolean} enabled - Indica si la cuenta está habilitada
- * @property {ObjectId} empleado - Referencia al empleado asociado (solo para rol EMPLEADO)
+ * @property {string} username - Nombre de usuario único
+ * @property {string} password - Contraseña encriptada
+ * @property {string} rol - Rol del usuario (ADMIN, EMPLEADO)
+ * @property {ObjectId} [empleado] - Referencia al empleado asociado (si corresponde)
+ * @property {Date} fechaCreacion - Fecha de creación del registro
+ * @property {Date} ultimoAcceso - Fecha del último acceso
+ * @property {boolean} activo - Indica si el usuario está activo
  */
 const usuarioSchema = new Schema({
   username: {
@@ -58,6 +57,17 @@ const usuarioSchema = new Schema({
     required: function() {
       return this.rol === 'EMPLEADO';
     }
+  },
+  fechaCreacion: {
+    type: Date,
+    default: Date.now
+  },
+  ultimoAcceso: {
+    type: Date
+  },
+  activo: {
+    type: Boolean,
+    default: true
   }
 }, {
   timestamps: true,
@@ -65,16 +75,10 @@ const usuarioSchema = new Schema({
 });
 
 /**
- * Método para comparar contraseñas
- * @param {string} candidatePassword - Contraseña a comparar
- * @returns {Promise<boolean>} - Resultado de la comparación
- */
-usuarioSchema.methods.comparePassword = async function(candidatePassword) {
-  return bcrypt.compare(candidatePassword, this.password);
-};
-
-/**
- * Middleware para hashear la contraseña antes de guardar
+ * Método pre-save para encriptar la contraseña antes de guardar
+ * @function
+ * @name preSave
+ * @memberof UsuarioSchema
  */
 usuarioSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
@@ -87,6 +91,18 @@ usuarioSchema.pre('save', async function(next) {
     next(error);
   }
 });
+
+/**
+ * Método para comparar contraseñas
+ * @function
+ * @name comparePassword
+ * @memberof UsuarioSchema.methods
+ * @param {string} candidatePassword - Contraseña a comparar
+ * @returns {Promise<boolean>} Verdadero si la contraseña coincide
+ */
+usuarioSchema.methods.comparePassword = async function(candidatePassword) {
+  return bcrypt.compare(candidatePassword, this.password);
+};
 
 /**
  * Modelo de Mongoose para Usuario

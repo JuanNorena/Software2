@@ -10,32 +10,36 @@ const LiquidacionSueldo = require('../Model/LiquidacionSueldo');
 const Empleado = require('../Model/Empleado');
 const Descuento = require('../Model/Descuento');
 const LiquidacionService = require('../service/LiquidacionService');
+const BaseController = require('./BaseController');
 const { authenticateUser, authorizeRoles } = require('../middleware/authMiddleware');
 const asyncHandler = require('../middleware/asyncHandler');
 
 /**
  * @description Obtiene todas las liquidaciones de sueldo registradas en el sistema
  * @route GET /api/liquidaciones-sueldo
+ * @access Admin
  * @returns {Array} Lista de todas las liquidaciones con información del empleado y descuentos
  */
-router.get('/', authenticateUser, authorizeRoles(['ADMIN']), async (req, res) => {
+router.get('/', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
   try {
     const liquidaciones = await LiquidacionSueldo.find()
       .populate('empleado', 'nombre rut cargo sueldoBase')
       .populate('descuentos');
-    res.json(liquidaciones);
+    
+    BaseController.sendResponse(res, liquidaciones);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    BaseController.handleError(res, error);
   }
-});
+}));
 
 /**
  * @description Obtiene una liquidación de sueldo específica por su ID
  * @route GET /api/liquidaciones-sueldo/:id
+ * @access Private
  * @param {string} req.params.id - ID de la liquidación a buscar
  * @returns {Object} Datos de la liquidación encontrada con información del empleado y descuentos
  */
-router.get('/:id', async (req, res) => {
+router.get('/:id', asyncHandler(async (req, res) => {
   try {
     const liquidacion = await LiquidacionSueldo.findById(req.params.id)
       .populate('empleado', 'nombre rut cargo sueldoBase')
@@ -47,15 +51,16 @@ router.get('/:id', async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
-});
+}));
 
 /**
  * @description Obtiene todas las liquidaciones de sueldo de un empleado específico
  * @route GET /api/liquidaciones-sueldo/empleado/:empleadoId
+ * @access Private
  * @param {string} req.params.empleadoId - ID del empleado
  * @returns {Array} Lista de liquidaciones del empleado con sus descuentos
  */
-router.get('/empleado/:empleadoId', async (req, res) => {
+router.get('/empleado/:empleadoId', asyncHandler(async (req, res) => {
   try {
     const liquidaciones = await LiquidacionSueldo.find({ empleado: req.params.empleadoId })
       .populate('empleado', 'nombre rut cargo sueldoBase')
@@ -64,15 +69,16 @@ router.get('/empleado/:empleadoId', async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
-});
+}));
 
 /**
  * @description Obtiene liquidaciones de sueldo filtradas por estado
  * @route GET /api/liquidaciones-sueldo/estado/:estado
+ * @access Private
  * @param {string} req.params.estado - Estado de las liquidaciones (emitido o pagado)
  * @returns {Array} Lista de liquidaciones que coinciden con el estado
  */
-router.get('/estado/:estado', async (req, res) => {
+router.get('/estado/:estado', asyncHandler(async (req, res) => {
   try {
     const liquidaciones = await LiquidacionSueldo.find({ estado: req.params.estado })
       .populate('empleado', 'nombre rut cargo sueldoBase')
@@ -81,11 +87,12 @@ router.get('/estado/:estado', async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
-});
+}));
 
 /**
  * @description Crea una nueva liquidación de sueldo en el sistema
  * @route POST /api/liquidaciones-sueldo
+ * @access Admin
  * @param {Object} req.body - Datos de la liquidación a crear
  * @param {string} req.body.empleado - ID del empleado asociado
  * @param {string} [req.body.estado=emitido] - Estado de la liquidación
@@ -96,7 +103,7 @@ router.get('/estado/:estado', async (req, res) => {
  * @param {Array} [req.body.descuentos] - Lista de descuentos a aplicar
  * @returns {Object} Datos de la liquidación creada con sus descuentos
  */
-router.post('/', async (req, res) => {
+router.post('/', asyncHandler(async (req, res) => {
   try {
     // Verificar si el empleado existe
     const empleadoExiste = await Empleado.findById(req.body.empleado);
@@ -138,34 +145,37 @@ router.post('/', async (req, res) => {
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
-});
+}));
 
 /**
  * @description Genera liquidación de sueldo para un empleado
  * @route POST /api/liquidaciones-sueldo/generar
  * @access Admin
+ * @param {Object} req.body - Datos para generar la liquidación
+ * @param {string} req.body.empleadoId - ID del empleado
+ * @param {number} req.body.mes - Mes (1-12)
+ * @param {number} req.body.anio - Año
+ * @returns {Object} Datos de la liquidación generada
  */
 router.post('/generar', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
   const { empleadoId, mes, anio } = req.body;
   
-  if (!empleadoId || !mes || !anio) {
-    return res.status(400).json({ 
-      mensaje: 'Debe proporcionar empleadoId, mes y anio' 
-    });
+  const errorValidacion = BaseController.validateRequiredFields(req, ['empleadoId', 'mes', 'anio']);
+  if (errorValidacion) {
+    return res.status(400).json({ mensaje: errorValidacion });
   }
   
   try {
     const liquidacion = await LiquidacionService.generarLiquidacion(empleadoId, parseInt(mes), parseInt(anio));
     
-    res.status(201).json({
-      mensaje: 'Liquidación generada correctamente',
-      liquidacion
-    });
+    BaseController.sendResponse(
+      res, 
+      { liquidacion }, 
+      'Liquidación generada correctamente',
+      201
+    );
   } catch (error) {
-    res.status(400).json({
-      mensaje: 'Error al generar liquidación',
-      error: error.message
-    });
+    BaseController.handleError(res, error, 400);
   }
 }));
 
@@ -173,6 +183,11 @@ router.post('/generar', authenticateUser, authorizeRoles(['ADMIN']), asyncHandle
  * @description Genera liquidaciones para todos los empleados de una empresa
  * @route POST /api/liquidaciones-sueldo/generar-empresa
  * @access Admin
+ * @param {Object} req.body - Datos para generar liquidaciones
+ * @param {string} req.body.empresaId - ID de la empresa
+ * @param {number} req.body.mes - Mes (1-12)
+ * @param {number} req.body.anio - Año
+ * @returns {Object} Resultados de la generación
  */
 router.post('/generar-empresa', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
   const { empresaId, mes, anio } = req.body;
@@ -202,6 +217,7 @@ router.post('/generar-empresa', authenticateUser, authorizeRoles(['ADMIN']), asy
  * @description Obtiene liquidaciones pendientes de aprobación
  * @route GET /api/liquidaciones-sueldo/pendientes
  * @access Admin
+ * @returns {Array} Lista de liquidaciones pendientes
  */
 router.get('/pendientes', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
   const liquidaciones = await LiquidacionSueldo.find({ estado: 'pendiente' })
@@ -215,6 +231,8 @@ router.get('/pendientes', authenticateUser, authorizeRoles(['ADMIN']), asyncHand
  * @description Aprueba una liquidación de sueldo
  * @route PUT /api/liquidaciones-sueldo/:id/aprobar
  * @access Admin
+ * @param {string} req.params.id - ID de la liquidación
+ * @returns {Object} Liquidación aprobada
  */
 router.put('/:id/aprobar', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
   try {
@@ -239,6 +257,10 @@ router.put('/:id/aprobar', authenticateUser, authorizeRoles(['ADMIN']), asyncHan
  * @description Rechaza una liquidación de sueldo
  * @route PUT /api/liquidaciones-sueldo/:id/rechazar
  * @access Admin
+ * @param {string} req.params.id - ID de la liquidación
+ * @param {Object} req.body - Datos del rechazo
+ * @param {string} req.body.motivo - Motivo del rechazo
+ * @returns {Object} Liquidación rechazada
  */
 router.put('/:id/rechazar', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
   const { motivo } = req.body;
@@ -271,6 +293,11 @@ router.put('/:id/rechazar', authenticateUser, authorizeRoles(['ADMIN']), asyncHa
  * @description Procesa el pago de una liquidación
  * @route POST /api/liquidaciones-sueldo/:id/pagar
  * @access Admin
+ * @param {string} req.params.id - ID de la liquidación
+ * @param {Object} req.body - Datos del pago
+ * @param {string} req.body.metodoPago - Método de pago (cheque o deposito)
+ * @param {string} req.body.banco - Banco que procesa el pago
+ * @returns {Object} Detalle de la operación de pago
  */
 router.post('/:id/pagar', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
   const { metodoPago, banco } = req.body;
@@ -305,6 +332,7 @@ router.post('/:id/pagar', authenticateUser, authorizeRoles(['ADMIN']), asyncHand
  * @description Obtiene las liquidaciones disponibles del empleado
  * @route GET /api/liquidaciones-sueldo/empleado/mis-liquidaciones
  * @access Empleado
+ * @returns {Array} Liquidaciones disponibles del empleado autenticado
  */
 router.get('/empleado/mis-liquidaciones', authenticateUser, asyncHandler(async (req, res) => {
   if (!req.user.empleadoId) {
@@ -325,11 +353,12 @@ router.get('/empleado/mis-liquidaciones', authenticateUser, asyncHandler(async (
 /**
  * @description Actualiza una liquidación de sueldo
  * @route PUT /api/liquidaciones-sueldo/:id
+ * @access Admin
  * @param {string} req.params.id - ID de la liquidación a actualizar
  * @param {Object} req.body - Datos de la liquidación a actualizar
  * @returns {Object} Datos de la liquidación actualizada
  */
-router.put('/:id', async (req, res) => {
+router.put('/:id', asyncHandler(async (req, res) => {
   try {
     const liquidacion = await LiquidacionSueldo.findById(req.params.id);
     if (!liquidacion) {
@@ -357,15 +386,16 @@ router.put('/:id', async (req, res) => {
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
-});
+}));
 
 /**
  * @description Elimina una liquidación de sueldo
  * @route DELETE /api/liquidaciones-sueldo/:id
+ * @access Admin
  * @param {string} req.params.id - ID de la liquidación a eliminar
  * @returns {Object} Mensaje de confirmación de eliminación
  */
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', asyncHandler(async (req, res) => {
   try {
     const liquidacion = await LiquidacionSueldo.findById(req.params.id);
     if (!liquidacion) {
@@ -381,12 +411,15 @@ router.delete('/:id', async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
-});
+}));
 
 /**
  * @description Genera informe de pagos previsionales
  * @route GET /api/liquidaciones-sueldo/informe-previsional/:mes/:anio
  * @access Admin
+ * @param {number} req.params.mes - Mes (1-12)
+ * @param {number} req.params.anio - Año
+ * @returns {Object} Informe generado
  */
 router.get('/informe-previsional/:mes/:anio', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
   const { mes, anio } = req.params;

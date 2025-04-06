@@ -9,13 +9,15 @@ const router = express.Router();
 const Descuento = require('../Model/Descuento');
 const LiquidacionSueldo = require('../Model/LiquidacionSueldo');
 const asyncHandler = require('../middleware/asyncHandler');
+const { authenticateUser, authorizeRoles } = require('../middleware/authMiddleware');
 
 /**
  * @description Obtiene todos los descuentos
  * @route GET /api/descuentos
+ * @access Private
  * @returns {Array} Lista de descuentos
  */
-router.get('/', asyncHandler(async (req, res) => {
+router.get('/', authenticateUser, asyncHandler(async (req, res) => {
   const descuentos = await Descuento.find()
     .populate('liquidacionSueldo', 'fecha sueldoBruto sueldoNeto')
     .populate({
@@ -28,6 +30,7 @@ router.get('/', asyncHandler(async (req, res) => {
 /**
  * @description Obtiene un descuento por su ID
  * @route GET /api/descuentos/:id
+ * @access Private
  * @param {string} id - ID del descuento
  * @returns {Object} Descuento encontrado
  */
@@ -49,6 +52,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
 /**
  * @description Obtiene descuentos por liquidación de sueldo
  * @route GET /api/descuentos/liquidacion/:liquidacionId
+ * @access Private
  * @param {string} liquidacionId - ID de la liquidación de sueldo
  * @returns {Array} Lista de descuentos asociados a la liquidación
  */
@@ -66,7 +70,11 @@ router.get('/liquidacion/:liquidacionId', asyncHandler(async (req, res) => {
 /**
  * @description Crea un nuevo descuento
  * @route POST /api/descuentos
+ * @access Admin
  * @param {Object} req.body - Datos del descuento
+ * @param {string} req.body.concepto - Concepto del descuento
+ * @param {number} req.body.valor - Valor monetario del descuento
+ * @param {string} req.body.liquidacionSueldo - ID de la liquidación asociada
  * @returns {Object} Nuevo descuento creado
  */
 router.post('/', asyncHandler(async (req, res) => {
@@ -95,6 +103,7 @@ router.post('/', asyncHandler(async (req, res) => {
 /**
  * @description Actualiza un descuento existente
  * @route PUT /api/descuentos/:id
+ * @access Admin
  * @param {string} id - ID del descuento
  * @param {Object} req.body - Datos actualizados del descuento
  * @returns {Object} Descuento actualizado
@@ -150,6 +159,7 @@ router.put('/:id', asyncHandler(async (req, res) => {
 /**
  * @description Elimina un descuento
  * @route DELETE /api/descuentos/:id
+ * @access Admin
  * @param {string} id - ID del descuento
  * @returns {Object} Mensaje de confirmación
  */

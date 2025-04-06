@@ -1,5 +1,6 @@
 /**
  * @fileoverview Controlador para gestionar las operaciones relacionadas con asistencia de empleados
+ * @author Juan Sebastian Noreña
  * @version 1.0.0
  */
 
@@ -12,6 +13,9 @@ const asyncHandler = require('../middleware/asyncHandler');
 /**
  * @description Obtiene el historial de asistencia del empleado autenticado
  * @route GET /api/asistencia/mi-historial
+ * @access Empleado
+ * @param {string} [req.query.fechaInicio] - Fecha de inicio (opcional)
+ * @param {string} [req.query.fechaFin] - Fecha de fin (opcional)
  * @returns {Array} Lista de registros de asistencia del empleado
  */
 router.get('/mi-historial', authenticateUser, asyncHandler(async (req, res) => {
@@ -36,7 +40,10 @@ router.get('/mi-historial', authenticateUser, asyncHandler(async (req, res) => {
 /**
  * @description Obtiene el historial de asistencia de un empleado específico (solo admin)
  * @route GET /api/asistencia/empleado/:empleadoId
+ * @access Admin
  * @param {string} empleadoId - ID del empleado
+ * @param {string} [req.query.fechaInicio] - Fecha de inicio (opcional)
+ * @param {string} [req.query.fechaFin] - Fecha de fin (opcional)
  * @returns {Array} Lista de registros de asistencia del empleado
  */
 router.get('/empleado/:empleadoId', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
@@ -57,6 +64,10 @@ router.get('/empleado/:empleadoId', authenticateUser, authorizeRoles(['ADMIN']),
 /**
  * @description Obtiene todos los registros de asistencia (solo admin)
  * @route GET /api/asistencia
+ * @access Admin
+ * @param {string} [req.query.fechaInicio] - Fecha de inicio (opcional)
+ * @param {string} [req.query.fechaFin] - Fecha de fin (opcional)
+ * @param {string} [req.query.empleadoId] - ID de empleado específico (opcional)
  * @returns {Array} Lista de registros de asistencia
  */
 router.get('/', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
@@ -96,6 +107,9 @@ router.get('/', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async 
 /**
  * @description Obtiene el resumen de horas trabajadas del empleado autenticado
  * @route GET /api/asistencia/horas
+ * @access Empleado
+ * @param {string} [req.query.fechaInicio] - Fecha de inicio (opcional)
+ * @param {string} [req.query.fechaFin] - Fecha de fin (opcional)
  * @returns {Object} Resumen de horas trabajadas
  */
 router.get('/horas', authenticateUser, asyncHandler(async (req, res) => {
@@ -120,7 +134,10 @@ router.get('/horas', authenticateUser, asyncHandler(async (req, res) => {
 /**
  * @description Obtiene el resumen de horas trabajadas de un empleado específico (solo admin)
  * @route GET /api/asistencia/empleado/:empleadoId/horas
+ * @access Admin
  * @param {string} empleadoId - ID del empleado
+ * @param {string} [req.query.fechaInicio] - Fecha de inicio (opcional)
+ * @param {string} [req.query.fechaFin] - Fecha de fin (opcional)
  * @returns {Object} Resumen de horas trabajadas
  */
 router.get('/empleado/:empleadoId/horas', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
@@ -141,6 +158,7 @@ router.get('/empleado/:empleadoId/horas', authenticateUser, authorizeRoles(['ADM
 /**
  * @description Registra manualmente una entrada para un empleado (solo admin)
  * @route POST /api/asistencia/entrada/:empleadoId
+ * @access Admin
  * @param {string} empleadoId - ID del empleado
  * @returns {Object} Registro de asistencia creado
  */
@@ -156,6 +174,7 @@ router.post('/entrada/:empleadoId', authenticateUser, authorizeRoles(['ADMIN']),
 /**
  * @description Registra manualmente una salida para un empleado (solo admin)
  * @route POST /api/asistencia/salida/:empleadoId
+ * @access Admin
  * @param {string} empleadoId - ID del empleado
  * @returns {Object} Registro de asistencia actualizado
  */

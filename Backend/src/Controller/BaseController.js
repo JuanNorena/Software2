@@ -1,8 +1,13 @@
 /**
  * @fileoverview Controlador base con funciones comunes para evitar duplicación
+ * @author Juan Sebastian Noreña
  * @version 1.0.0
  */
 
+/**
+ * Clase con métodos utilitarios para estandarizar respuestas en los controladores
+ * @class BaseController
+ */
 class BaseController {
   /**
    * Crea una respuesta estándar para errores
@@ -42,7 +47,7 @@ class BaseController {
   /**
    * Valida que los campos requeridos estén presentes
    * @param {Request} req - Objeto de solicitud Express
-   * @param {Array} requiredFields - Campos requeridos 
+   * @param {Array<string>} requiredFields - Campos requeridos 
    * @returns {string|null} Mensaje de error o null si todo es válido
    */
   static validateRequiredFields(req, requiredFields) {
@@ -52,6 +57,16 @@ class BaseController {
       }
     }
     return null;
+  }
+  
+  /**
+   * Crea una respuesta para errores de validación o solicitud incorrecta
+   * @param {Response} res - Objeto de respuesta Express
+   * @param {string} message - Mensaje de error
+   * @param {number} statusCode - Código HTTP (default: 400)
+   */
+  static handleBadRequest(res, message, statusCode = 400) {
+    res.status(statusCode).json({ mensaje: message });
   }
 }
 

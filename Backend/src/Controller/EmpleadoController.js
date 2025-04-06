@@ -1,5 +1,5 @@
 /**
- * @fileoverview Controlador para gestionar las operaciones CRUD de empleados
+ * @fileoverview Controlador para gestionar las operaciones CRUD de empleados y empresas
  * @author Juan Sebastian Noreña
  * @version 1.0.0
  */
@@ -8,12 +8,14 @@ const express = require('express');
 const router = express.Router();
 const Empleado = require('../Model/Empleado');
 const Empresa = require('../Model/Empresa');
+const BaseController = require('./BaseController');
 const { authenticateUser, authorizeRoles } = require('../middleware/authMiddleware');
 const asyncHandler = require('../middleware/asyncHandler');
 
 /**
  * @description Obtiene todos los empleados registrados en el sistema
  * @route GET /api/empleados
+ * @access Admin
  * @returns {Array} Lista de todos los empleados con información básica de su empresa
  */
 router.get('/', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
@@ -24,10 +26,11 @@ router.get('/', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async 
 /**
  * @description Obtiene un empleado específico por su ID
  * @route GET /api/empleados/:id
- * @param {string} req.params.id - ID del empleado a buscar
- * @returns {Object} Datos del empleado encontrado con información de su empresa
+ * @access Admin
+ * @param {string} id - ID del empleado a buscar
+ * @returns {Object} Datos completos del empleado incluyendo su empresa
  */
-router.get('/:id', authenticateUser, asyncHandler(async (req, res) => {
+router.get('/:id', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
   // Verificar si el usuario es ADMIN o si está accediendo a su propio perfil
   if (req.user.rol !== 'ADMIN' && req.user.empleadoId !== req.params.id) {
     return res.status(403).json({ message: 'No tiene permisos para ver este empleado' });
@@ -41,9 +44,10 @@ router.get('/:id', authenticateUser, asyncHandler(async (req, res) => {
 }));
 
 /**
- * @description Obtiene todos los empleados que pertenecen a una empresa específica
+ * @description Obtiene todos los empleados de una empresa específica
  * @route GET /api/empleados/empresa/:empresaId
- * @param {string} req.params.empresaId - ID de la empresa
+ * @access Admin
+ * @param {string} empresaId - ID de la empresa
  * @returns {Array} Lista de empleados que pertenecen a la empresa especificada
  */
 router.get('/empresa/:empresaId', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
@@ -54,6 +58,7 @@ router.get('/empresa/:empresaId', authenticateUser, authorizeRoles(['ADMIN']), a
 /**
  * @description Crea un nuevo empleado en el sistema
  * @route POST /api/empleados
+ * @access Admin
  * @param {Object} req.body - Datos del empleado a crear
  * @param {string} req.body.nombre - Nombre completo del empleado
  * @param {string} req.body.cargo - Cargo o puesto del empleado
@@ -98,11 +103,12 @@ router.post('/', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async
 }));
 
 /**
- * @description Actualiza la información de un empleado existente
+ * @description Actualiza un empleado existente
  * @route PUT /api/empleados/:id
- * @param {string} req.params.id - ID del empleado a actualizar
- * @param {Object} req.body - Nuevos datos del empleado
- * @returns {Object} Datos actualizados del empleado
+ * @access Admin
+ * @param {string} id - ID del empleado a actualizar
+ * @param {Object} req.body - Datos actualizados del empleado
+ * @returns {Object} Datos del empleado actualizado
  */
 router.put('/:id', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
   // Verificar si la empresa existe, si se está actualizando
@@ -129,8 +135,9 @@ router.put('/:id', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(asy
 /**
  * @description Elimina un empleado del sistema
  * @route DELETE /api/empleados/:id
- * @param {string} req.params.id - ID del empleado a eliminar
- * @returns {Object} Mensaje de confirmación
+ * @access Admin
+ * @param {string} id - ID del empleado a eliminar
+ * @returns {Object} Mensaje de confirmación de eliminación
  */
 router.delete('/:id', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
   const empleado = await Empleado.findById(req.params.id);
