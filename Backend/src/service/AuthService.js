@@ -7,7 +7,9 @@
 const Usuario = require('../Model/Usuario');
 const Empleado = require('../Model/Empleado');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const AsistenciaService = require('./AsistenciaService');
+const EmailService = require('./EmailService');
 
 /**
  * Servicio para la gestión de autenticación y usuarios
@@ -32,14 +34,21 @@ class AuthService {
    * Autentica a un usuario y genera un token JWT
    * @param {string} username - Nombre de usuario
    * @param {string} password - Contraseña
+   * @param {boolean} recordarme - Extender duración del token si es true
    * @returns {Promise<Object>} Información del usuario y token JWT
    * @throws {Error} Si las credenciales son inválidas
    */
-  async login(username, password) {
+  async login(username, password, recordarme = false) {
     // Buscar el usuario por nombre de usuario
     const usuario = await Usuario.findOne({ username });
     if (!usuario) {
       throw new Error('Credenciales inválidas');
+    }
+
+    // Verificar si la cuenta está bloqueada temporalmente
+    if (usuario.fechaBloqueo && usuario.fechaBloqueo > new Date()) {
+      const minutosRestantes = Math.ceil((usuario.fechaBloqueo - new Date()) / (1000 * 60));
+      throw new Error(`Cuenta bloqueada temporalmente. Intente nuevamente en ${minutosRestantes} minutos`);
     }
 
     // Verificar si la cuenta está habilitada
@@ -50,8 +59,28 @@ class AuthService {
     // Verificar la contraseña
     const isPasswordValid = await usuario.comparePassword(password);
     if (!isPasswordValid) {
+      // Incrementar contador de intentos fallidos
+      usuario.intentosFallidos += 1;
+      
+      // Si alcanza el límite, bloquear la cuenta temporalmente (30 minutos)
+      if (usuario.intentosFallidos >= 5) {
+        const tiempoBloqueo = new Date();
+        tiempoBloqueo.setMinutes(tiempoBloqueo.getMinutes() + 30);
+        usuario.fechaBloqueo = tiempoBloqueo;
+        usuario.intentosFallidos = 0;
+        await usuario.save();
+        throw new Error('Demasiados intentos fallidos. Cuenta bloqueada por 30 minutos');
+      }
+      
+      await usuario.save();
       throw new Error('Credenciales inválidas');
     }
+
+    // Resetear contador de intentos fallidos
+    usuario.intentosFallidos = 0;
+    usuario.fechaBloqueo = null;
+    usuario.ultimoAcceso = new Date();
+    await usuario.save();
 
     // Obtener información adicional según el rol
     let userData = {};
@@ -76,7 +105,9 @@ class AuthService {
       }
     }
 
-    // Generar token JWT
+    // Generar token JWT con duración según recordarme
+    const duracionToken = recordarme ? '30d' : '24h';
+    
     const token = jwt.sign(
       { 
         id: usuario._id,
@@ -85,7 +116,7 @@ class AuthService {
         ...userData
       },
       process.env.JWT_SECRET || 'personalpay_secret_key',
-      { expiresIn: '24h' }
+      { expiresIn: duracionToken }
     );
 
     return {
@@ -150,6 +181,99 @@ class AuthService {
     }
     
     return user.rol === roles;
+  }
+
+  /**
+   * Solicita restablecer contraseña del usuario
+   * @param {string} email - Email del usuario
+   * @returns {Promise<boolean>} True si se envía el correo con éxito
+   * @throws {Error} Si no existe el usuario con ese email
+   */
+  async solicitarRestablecerPassword(email) {
+    // Buscar usuario por email
+    const usuario = await Usuario.findOne({ email });
+    if (!usuario) {
+      // Por seguridad, no revelamos si el email existe o no
+      return true;
+    }
+
+    // Generar token aleatorio
+    const token = crypto.randomBytes(20).toString('hex');
+    
+    // Establecer token y expiración (24 horas)
+    usuario.resetPasswordToken = token;
+    usuario.resetPasswordExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 horas
+    
+    await usuario.save();
+    
+    // Enviar correo
+    try {
+      await EmailService.enviarCorreoRestablecimiento(email, token);
+      return true;
+    } catch (error) {
+      console.error('Error al enviar correo de restablecimiento:', error);
+      // Invalidar el token si falla el envío
+      usuario.resetPasswordToken = undefined;
+      usuario.resetPasswordExpires = undefined;
+      await usuario.save();
+      throw new Error('Error al enviar correo de restablecimiento');
+    }
+  }
+
+  /**
+   * Valida un token para restablecer contraseña
+   * @param {string} token - Token de restablecimiento
+   * @returns {Promise<Object>} Información básica del usuario
+   * @throws {Error} Si el token es inválido o ha expirado
+   */
+  async validarTokenRestablecimiento(token) {
+    const usuario = await Usuario.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: Date.now() }
+    });
+
+    if (!usuario) {
+      throw new Error('Token inválido o expirado');
+    }
+
+    return {
+      username: usuario.username,
+      email: usuario.email
+    };
+  }
+
+  /**
+   * Restablece la contraseña de un usuario
+   * @param {string} token - Token de restablecimiento
+   * @param {string} newPassword - Nueva contraseña
+   * @returns {Promise<boolean>} True si se cambia correctamente
+   * @throws {Error} Si el token es inválido o ha expirado
+   */
+  async restablecerPassword(token, newPassword) {
+    const usuario = await Usuario.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: Date.now() }
+    });
+
+    if (!usuario) {
+      throw new Error('Token inválido o expirado');
+    }
+
+    // Actualizar contraseña
+    usuario.password = newPassword;
+    usuario.resetPasswordToken = undefined;
+    usuario.resetPasswordExpires = undefined;
+    await usuario.save();
+    
+    // Enviar correo de confirmación
+    try {
+      await EmailService.enviarConfirmacionCambioPassword(usuario.email);
+    } catch (error) {
+      console.error('Error al enviar confirmación de cambio de contraseña:', error);
+      // No interrumpimos el proceso si falla el envío
+    }
+    
+    return true;
   }
 }
 

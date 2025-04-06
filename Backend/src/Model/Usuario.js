@@ -26,6 +26,13 @@ const usuarioSchema = new Schema({
     unique: true,
     trim: true
   },
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true,
+    match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Por favor ingrese un email válido']
+  },
   password: {
     type: String,
     required: true
@@ -51,6 +58,16 @@ const usuarioSchema = new Schema({
     type: Boolean,
     default: true
   },
+  intentosFallidos: {
+    type: Number,
+    default: 0
+  },
+  fechaBloqueo: {
+    type: Date,
+    default: null
+  },
+  resetPasswordToken: String,
+  resetPasswordExpires: Date,
   empleado: {
     type: Schema.Types.ObjectId,
     ref: 'Empleado',

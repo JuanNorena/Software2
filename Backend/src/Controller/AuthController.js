@@ -115,17 +115,18 @@ router.post('/register', asyncHandler(async (req, res) => {
  * @param {Object} req.body - Credenciales de inicio de sesión
  * @param {string} req.body.username - Nombre de usuario
  * @param {string} req.body.password - Contraseña
+ * @param {boolean} [req.body.recordarme=false] - Recordar sesión
  * @returns {Object} Token de autenticación y datos básicos del usuario
  */
 router.post('/login', asyncHandler(async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password, recordarme } = req.body;
     
     if (!username || !password) {
       return res.status(400).json({ message: 'Usuario y contraseña son requeridos' });
     }
     
-    const resultado = await AuthService.login(username, password);
+    const resultado = await AuthService.login(username, password, !!recordarme);
     
     res.json({
       message: 'Inicio de sesión exitoso',
@@ -170,6 +171,91 @@ router.post('/logout', authenticateUser, asyncHandler(async (req, res) => {
       message: 'Error al registrar salida',
       error: error.message
     });
+  }
+}));
+
+/**
+ * @description Solicita restablecer la contraseña de un usuario
+ * @route POST /api/auth/solicitar-restablecimiento
+ * @access Public
+ * @param {Object} req.body - Datos para solicitud
+ * @param {string} req.body.email - Email del usuario
+ * @returns {Object} Mensaje de confirmación
+ */
+router.post('/solicitar-restablecimiento', asyncHandler(async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ message: 'Email es requerido' });
+    }
+    
+    await AuthService.solicitarRestablecerPassword(email);
+    
+    // Por seguridad, siempre devolvemos la misma respuesta
+    // independientemente de si el email existe o no
+    res.json({
+      message: 'Se ha enviado un correo con instrucciones para restablecer la contraseña'
+    });
+  } catch (error) {
+    console.error('Error al solicitar restablecimiento:', error);
+    res.status(500).json({ message: 'Error al procesar la solicitud' });
+  }
+}));
+
+/**
+ * @description Valida un token de restablecimiento de contraseña
+ * @route GET /api/auth/validar-token/:token
+ * @access Public
+ * @param {string} token - Token de restablecimiento
+ * @returns {Object} Información básica del usuario o mensaje de error
+ */
+router.get('/validar-token/:token', asyncHandler(async (req, res) => {
+  try {
+    const { token } = req.params;
+    
+    const usuario = await AuthService.validarTokenRestablecimiento(token);
+    
+    res.json({
+      message: 'Token válido',
+      usuario
+    });
+  } catch (error) {
+    console.error('Error al validar token:', error);
+    res.status(400).json({ message: error.message });
+  }
+}));
+
+/**
+ * @description Restablece la contraseña de un usuario
+ * @route POST /api/auth/restablecer-password
+ * @access Public
+ * @param {Object} req.body - Datos para restablecer contraseña
+ * @param {string} req.body.token - Token de restablecimiento
+ * @param {string} req.body.password - Nueva contraseña
+ * @returns {Object} Mensaje de confirmación
+ */
+router.post('/restablecer-password', asyncHandler(async (req, res) => {
+  try {
+    const { token, password } = req.body;
+    
+    if (!token || !password) {
+      return res.status(400).json({ message: 'Token y contraseña son requeridos' });
+    }
+    
+    // Validar requisitos de seguridad de la contraseña
+    if (password.length < 8) {
+      return res.status(400).json({ message: 'La contraseña debe tener al menos 8 caracteres' });
+    }
+    
+    await AuthService.restablecerPassword(token, password);
+    
+    res.json({
+      message: 'Contraseña restablecida exitosamente'
+    });
+  } catch (error) {
+    console.error('Error al restablecer contraseña:', error);
+    res.status(400).json({ message: error.message });
   }
 }));
 
