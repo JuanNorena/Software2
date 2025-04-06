@@ -9,13 +9,16 @@ const router = express.Router();
 const LiquidacionSueldo = require('../Model/LiquidacionSueldo');
 const Empleado = require('../Model/Empleado');
 const Descuento = require('../Model/Descuento');
+const LiquidacionService = require('../service/LiquidacionService');
+const { authenticateUser, authorizeRoles } = require('../middleware/authMiddleware');
+const asyncHandler = require('../middleware/asyncHandler');
 
 /**
  * @description Obtiene todas las liquidaciones de sueldo registradas en el sistema
  * @route GET /api/liquidaciones-sueldo
  * @returns {Array} Lista de todas las liquidaciones con información del empleado y descuentos
  */
-router.get('/', async (req, res) => {
+router.get('/', authenticateUser, authorizeRoles(['ADMIN']), async (req, res) => {
   try {
     const liquidaciones = await LiquidacionSueldo.find()
       .populate('empleado', 'nombre rut cargo sueldoBase')
@@ -137,7 +140,195 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Actualizar una liquidación de sueldo
+/**
+ * @description Genera liquidación de sueldo para un empleado
+ * @route POST /api/liquidaciones-sueldo/generar
+ * @access Admin
+ */
+router.post('/generar', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
+  const { empleadoId, mes, anio } = req.body;
+  
+  if (!empleadoId || !mes || !anio) {
+    return res.status(400).json({ 
+      mensaje: 'Debe proporcionar empleadoId, mes y anio' 
+    });
+  }
+  
+  try {
+    const liquidacion = await LiquidacionService.generarLiquidacion(empleadoId, parseInt(mes), parseInt(anio));
+    
+    res.status(201).json({
+      mensaje: 'Liquidación generada correctamente',
+      liquidacion
+    });
+  } catch (error) {
+    res.status(400).json({
+      mensaje: 'Error al generar liquidación',
+      error: error.message
+    });
+  }
+}));
+
+/**
+ * @description Genera liquidaciones para todos los empleados de una empresa
+ * @route POST /api/liquidaciones-sueldo/generar-empresa
+ * @access Admin
+ */
+router.post('/generar-empresa', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
+  const { empresaId, mes, anio } = req.body;
+  
+  if (!empresaId || !mes || !anio) {
+    return res.status(400).json({
+      mensaje: 'Debe proporcionar empresaId, mes y anio'
+    });
+  }
+  
+  try {
+    const resultados = await LiquidacionService.generarLiquidacionesEmpresa(empresaId, parseInt(mes), parseInt(anio));
+    
+    res.json({
+      mensaje: 'Proceso de generación de liquidaciones completado',
+      resultados
+    });
+  } catch (error) {
+    res.status(400).json({
+      mensaje: 'Error en el proceso de generación',
+      error: error.message
+    });
+  }
+}));
+
+/**
+ * @description Obtiene liquidaciones pendientes de aprobación
+ * @route GET /api/liquidaciones-sueldo/pendientes
+ * @access Admin
+ */
+router.get('/pendientes', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
+  const liquidaciones = await LiquidacionSueldo.find({ estado: 'pendiente' })
+    .populate('empleado', 'nombre rut cargo')
+    .sort({ fecha: -1 });
+  
+  res.json(liquidaciones);
+}));
+
+/**
+ * @description Aprueba una liquidación de sueldo
+ * @route PUT /api/liquidaciones-sueldo/:id/aprobar
+ * @access Admin
+ */
+router.put('/:id/aprobar', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
+  try {
+    const liquidacion = await LiquidacionService.aprobarLiquidacion(
+      req.params.id,
+      req.user.id
+    );
+    
+    res.json({
+      mensaje: 'Liquidación aprobada correctamente',
+      liquidacion
+    });
+  } catch (error) {
+    res.status(400).json({
+      mensaje: 'Error al aprobar la liquidación',
+      error: error.message
+    });
+  }
+}));
+
+/**
+ * @description Rechaza una liquidación de sueldo
+ * @route PUT /api/liquidaciones-sueldo/:id/rechazar
+ * @access Admin
+ */
+router.put('/:id/rechazar', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
+  const { motivo } = req.body;
+  
+  if (!motivo) {
+    return res.status(400).json({
+      mensaje: 'Debe proporcionar un motivo para el rechazo'
+    });
+  }
+  
+  try {
+    const liquidacion = await LiquidacionService.rechazarLiquidacion(
+      req.params.id,
+      motivo
+    );
+    
+    res.json({
+      mensaje: 'Liquidación rechazada',
+      liquidacion
+    });
+  } catch (error) {
+    res.status(400).json({
+      mensaje: 'Error al rechazar la liquidación',
+      error: error.message
+    });
+  }
+}));
+
+/**
+ * @description Procesa el pago de una liquidación
+ * @route POST /api/liquidaciones-sueldo/:id/pagar
+ * @access Admin
+ */
+router.post('/:id/pagar', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
+  const { metodoPago, banco } = req.body;
+  
+  if (!metodoPago || !banco) {
+    return res.status(400).json({
+      mensaje: 'Debe proporcionar método de pago y banco'
+    });
+  }
+  
+  try {
+    const resultado = await LiquidacionService.procesarPagoLiquidacion(
+      req.params.id,
+      { metodoPago, banco }
+    );
+    
+    res.json({
+      mensaje: 'Pago procesado correctamente',
+      liquidacion: resultado.liquidacion,
+      pagoSueldo: resultado.pagoSueldo,
+      pagoProvisional: resultado.pagoProvisional
+    });
+  } catch (error) {
+    res.status(400).json({
+      mensaje: 'Error al procesar el pago',
+      error: error.message
+    });
+  }
+}));
+
+/**
+ * @description Obtiene las liquidaciones disponibles del empleado
+ * @route GET /api/liquidaciones-sueldo/empleado/mis-liquidaciones
+ * @access Empleado
+ */
+router.get('/empleado/mis-liquidaciones', authenticateUser, asyncHandler(async (req, res) => {
+  if (!req.user.empleadoId) {
+    return res.status(403).json({
+      mensaje: 'Acceso denegado. Usuario no es un empleado.'
+    });
+  }
+  
+  const liquidaciones = await LiquidacionSueldo.find({
+    empleado: req.user.empleadoId,
+    estado: { $in: ['aprobado', 'pagado'] }
+  }).populate('empleado', 'nombre rut cargo')
+    .sort({ fecha: -1 });
+  
+  res.json(liquidaciones);
+}));
+
+/**
+ * @description Actualiza una liquidación de sueldo
+ * @route PUT /api/liquidaciones-sueldo/:id
+ * @param {string} req.params.id - ID de la liquidación a actualizar
+ * @param {Object} req.body - Datos de la liquidación a actualizar
+ * @returns {Object} Datos de la liquidación actualizada
+ */
 router.put('/:id', async (req, res) => {
   try {
     const liquidacion = await LiquidacionSueldo.findById(req.params.id);
@@ -168,7 +359,12 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Eliminar una liquidación de sueldo
+/**
+ * @description Elimina una liquidación de sueldo
+ * @route DELETE /api/liquidaciones-sueldo/:id
+ * @param {string} req.params.id - ID de la liquidación a eliminar
+ * @returns {Object} Mensaje de confirmación de eliminación
+ */
 router.delete('/:id', async (req, res) => {
   try {
     const liquidacion = await LiquidacionSueldo.findById(req.params.id);
@@ -186,5 +382,28 @@ router.delete('/:id', async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+
+/**
+ * @description Genera informe de pagos previsionales
+ * @route GET /api/liquidaciones-sueldo/informe-previsional/:mes/:anio
+ * @access Admin
+ */
+router.get('/informe-previsional/:mes/:anio', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
+  const { mes, anio } = req.params;
+  
+  try {
+    const informe = await LiquidacionService.generarInformePrevisional(
+      parseInt(mes),
+      parseInt(anio)
+    );
+    
+    res.json(informe);
+  } catch (error) {
+    res.status(400).json({
+      mensaje: 'Error al generar el informe previsional',
+      error: error.message
+    });
+  }
+}));
 
 module.exports = router;

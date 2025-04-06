@@ -11,11 +11,15 @@ const Schema = mongoose.Schema;
  * Esquema de Mongoose para el modelo de Liquidación de Sueldo
  * @typedef {Object} LiquidacionSueldoSchema
  * @property {ObjectId} empleado - Referencia al empleado asociado a la liquidación
- * @property {string} estado - Estado de la liquidación (emitido o pagado)
+ * @property {string} estado - Estado de la liquidación (pendiente, aprobado, rechazado, pagado)
  * @property {Date} fecha - Fecha de la liquidación
  * @property {number} sueldoBruto - Monto del sueldo bruto
  * @property {number} sueldoNeto - Monto del sueldo neto (después de descuentos)
  * @property {number} totalDescuentos - Suma total de los descuentos aplicados
+ * @property {ObjectId} aprobadoPor - Usuario que aprobó la liquidación
+ * @property {Date} fechaAprobacion - Fecha de aprobación
+ * @property {string} motivoRechazo - Motivo en caso de rechazo
+ * @property {Date} fechaRechazo - Fecha de rechazo
  * @property {Date} fechaCreacion - Fecha de creación del registro
  */
 const liquidacionSueldoSchema = new Schema({
@@ -26,8 +30,8 @@ const liquidacionSueldoSchema = new Schema({
   },
   estado: {
     type: String,
-    enum: ['emitido', 'pagado'],
-    default: 'emitido',
+    enum: ['pendiente', 'aprobado', 'rechazado', 'pagado'],
+    default: 'pendiente',
     required: true
   },
   fecha: {
@@ -46,6 +50,19 @@ const liquidacionSueldoSchema = new Schema({
     type: Number,
     required: true,
     default: 0
+  },
+  aprobadoPor: {
+    type: Schema.Types.ObjectId,
+    ref: 'Usuario'
+  },
+  fechaAprobacion: {
+    type: Date
+  },
+  motivoRechazo: {
+    type: String
+  },
+  fechaRechazo: {
+    type: Date
   },
   fechaCreacion: {
     type: Date,

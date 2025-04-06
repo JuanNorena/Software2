@@ -11,6 +11,8 @@ const bcrypt = require('bcrypt');
 const Usuario = require('../Model/Usuario');
 const Empleado = require('../Model/Empleado');
 const asyncHandler = require('../middleware/asyncHandler');
+const { authenticateUser } = require('../middleware/authMiddleware');
+const AuthService = require('../service/AuthService');
 
 /**
  * @description Registra un nuevo empleado en el sistema con su usuario
@@ -96,61 +98,56 @@ router.post('/register', asyncHandler(async (req, res) => {
  */
 router.post('/login', asyncHandler(async (req, res) => {
   try {
-    // Buscar el usuario por nombre de usuario
-    const usuario = await Usuario.findOne({ username: req.body.username });
-    if (!usuario) {
-      return res.status(401).json({ message: 'Credenciales inválidas' });
+    const { username, password } = req.body;
+    
+    if (!username || !password) {
+      return res.status(400).json({ message: 'Usuario y contraseña son requeridos' });
     }
-
-    // Verificar si la cuenta está habilitada
-    if (!usuario.enabled || !usuario.accountNonLocked || !usuario.accountNonExpired || !usuario.credentialsNonExpired) {
-      return res.status(401).json({ message: 'Cuenta deshabilitada o bloqueada' });
-    }
-
-    // Verificar la contraseña
-    const isPasswordValid = await usuario.comparePassword(req.body.password);
-    if (!isPasswordValid) {
-      return res.status(401).json({ message: 'Credenciales inválidas' });
-    }
-
-    // Obtener información adicional según el rol
-    let userData = {};
-    if (usuario.rol === 'EMPLEADO' && usuario.empleado) {
-      const empleado = await Empleado.findById(usuario.empleado).populate('empresa', 'nombre');
-      if (empleado) {
-        userData = {
-          empleadoId: empleado._id,
-          nombre: empleado.nombre,
-          cargo: empleado.cargo,
-          empresa: empleado.empresa
-        };
-      }
-    }
-
-    // Generar token JWT
-    const token = jwt.sign(
-      { 
-        id: usuario._id,
-        username: usuario.username,
-        rol: usuario.rol,
-        ...userData
-      },
-      process.env.JWT_SECRET || 'personalpay_secret_key',
-      { expiresIn: '24h' }
-    );
-
+    
+    const resultado = await AuthService.login(username, password);
+    
     res.json({
       message: 'Inicio de sesión exitoso',
-      token,
-      usuario: {
-        id: usuario._id,
-        username: usuario.username,
-        rol: usuario.rol,
-        ...userData
-      }
+      token: resultado.token,
+      usuario: resultado.usuario
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Error en login:', error);
+    res.status(401).json({ message: error.message });
+  }
+}));
+
+/**
+ * @description Cierra sesión y registra la salida del empleado
+ * @route POST /api/auth/logout
+ * @returns {Object} Mensaje de confirmación y detalles del registro
+ */
+router.post('/logout', authenticateUser, asyncHandler(async (req, res) => {
+  try {
+    if (req.user.rol === 'EMPLEADO' && req.user.empleadoId) {
+      // Registrar salida del empleado
+      const registro = await AuthService.logout(req.user.empleadoId);
+      
+      return res.json({
+        message: 'Sesión cerrada y salida registrada correctamente',
+        registro: {
+          fecha: registro.fecha,
+          horaEntrada: registro.horaEntrada,
+          horaSalida: registro.horaSalida,
+          totalHorasTrabajadas: registro.totalHorasTrabajadas
+        }
+      });
+    } else {
+      return res.json({
+        message: 'Sesión cerrada correctamente'
+      });
+    }
+  } catch (error) {
+    console.error('Error al cerrar sesión:', error);
+    return res.status(400).json({
+      message: 'Error al registrar salida',
+      error: error.message
+    });
   }
 }));
 
