@@ -33,12 +33,14 @@ const registroAsistenciaSchema = new Schema({
   },
   horaSalida: {
     type: String,
-    required: true,
-    trim: true
+    required: false, // Cambiado de true a false para que sea opcional
+    trim: true,
+    default: '' // Valor predeterminado vacío
   },
   totalHorasTrabajadas: {
     type: Number,
-    required: true
+    required: false, // Cambiado a opcional ya que solo se calcula al registrar salida
+    default: 0 // Valor predeterminado cero
   },
   fechaCreacion: {
     type: Date,
