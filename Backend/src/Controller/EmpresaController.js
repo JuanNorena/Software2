@@ -44,6 +44,7 @@ router.get('/:rut', async (req, res) => {
 /**
  * @description Crea una nueva empresa en el sistema
  * @route POST /api/empresas
+ * @access Admin
  * @param {Object} req.body - Datos de la empresa a crear
  * @param {string} req.body.nombre - Nombre de la empresa
  * @param {string} req.body.rut - RUT de la empresa
@@ -52,19 +53,43 @@ router.get('/:rut', async (req, res) => {
  * @param {string} req.body.email - Email de contacto
  * @returns {Object} Datos de la empresa creada
  */
-router.post('/', async (req, res) => {
-  const empresa = new Empresa({
-    nombre: req.body.nombre,
-    rut: req.body.rut,
-    direccion: req.body.direccion,
-    telefono: req.body.telefono,
-    email: req.body.email
-  });
-
+router.post('/', authenticateUser, authorizeRoles(['ADMIN']), async (req, res) => {
   try {
+    // Validar campos obligatorios
+    const camposRequeridos = ['nombre', 'rut', 'direccion'];
+    for (const campo of camposRequeridos) {
+      if (!req.body[campo]) {
+        return res.status(400).json({ message: `El campo ${campo} es obligatorio` });
+      }
+    }
+    
+    // Validar formato RUT (formato chileno XX.XXX.XXX-X o XXXXXXXX-X)
+    const rutRegex = /^(\d{1,2}(\.?\d{3}){2}-)[\dkK]$/;
+    if (!rutRegex.test(req.body.rut)) {
+      return res.status(400).json({ message: 'El formato del RUT no es válido' });
+    }
+    
+    // Verificar si ya existe una empresa con ese RUT
+    const empresaExistente = await Empresa.findOne({ rut: req.body.rut });
+    if (empresaExistente) {
+      return res.status(400).json({ message: `Ya existe una empresa con el RUT ${req.body.rut}` });
+    }
+
+    const empresa = new Empresa({
+      nombre: req.body.nombre,
+      rut: req.body.rut,
+      direccion: req.body.direccion,
+      telefono: req.body.telefono || '',
+      email: req.body.email || ''
+    });
+
     const nuevaEmpresa = await empresa.save();
-    res.status(201).json(nuevaEmpresa);
+    res.status(201).json({
+      message: 'Empresa creada exitosamente',
+      empresa: nuevaEmpresa
+    });
   } catch (error) {
+    console.error('Error al crear empresa:', error);
     res.status(400).json({ message: error.message });
   }
 });

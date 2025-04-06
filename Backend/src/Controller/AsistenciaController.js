@@ -9,6 +9,7 @@ const router = express.Router();
 const { authenticateUser, authorizeRoles } = require('../middleware/authMiddleware');
 const AsistenciaService = require('../service/AsistenciaService');
 const asyncHandler = require('../middleware/asyncHandler');
+const mongoose = require('mongoose');
 
 /**
  * @description Obtiene el historial de asistencia del empleado autenticado
@@ -164,9 +165,22 @@ router.get('/empleado/:empleadoId/horas', authenticateUser, authorizeRoles(['ADM
  */
 router.post('/entrada/:empleadoId', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
   try {
+    if (!req.params.empleadoId) {
+      return res.status(400).json({ message: 'El ID del empleado es obligatorio' });
+    }
+    
+    // Validar que el empleadoId sea un ObjectId válido
+    if (!mongoose.Types.ObjectId.isValid(req.params.empleadoId)) {
+      return res.status(400).json({ message: 'El ID del empleado no es válido' });
+    }
+    
     const registro = await AsistenciaService.registrarEntrada(req.params.empleadoId);
-    res.status(201).json(registro);
+    res.status(201).json({
+      message: 'Entrada registrada exitosamente',
+      registro
+    });
   } catch (error) {
+    console.error('Error al registrar entrada:', error);
     res.status(400).json({ message: error.message });
   }
 }));
@@ -180,9 +194,22 @@ router.post('/entrada/:empleadoId', authenticateUser, authorizeRoles(['ADMIN']),
  */
 router.post('/salida/:empleadoId', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
   try {
+    if (!req.params.empleadoId) {
+      return res.status(400).json({ message: 'El ID del empleado es obligatorio' });
+    }
+    
+    // Validar que el empleadoId sea un ObjectId válido
+    if (!mongoose.Types.ObjectId.isValid(req.params.empleadoId)) {
+      return res.status(400).json({ message: 'El ID del empleado no es válido' });
+    }
+    
     const registro = await AsistenciaService.registrarSalida(req.params.empleadoId);
-    res.json(registro);
+    res.status(200).json({
+      message: 'Salida registrada exitosamente',
+      registro
+    });
   } catch (error) {
+    console.error('Error al registrar salida:', error);
     res.status(400).json({ message: error.message });
   }
 }));

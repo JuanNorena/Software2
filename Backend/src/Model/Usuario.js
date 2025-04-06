@@ -98,13 +98,17 @@ const usuarioSchema = new Schema({
  * @memberof UsuarioSchema
  */
 usuarioSchema.pre('save', async function(next) {
+  // Solo hashear la contraseña si ha sido modificada
   if (!this.isModified('password')) return next();
   
   try {
+    console.log('Hasheando contraseña para usuario:', this.username);
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
+    console.log('Contraseña hasheada correctamente');
     next();
   } catch (error) {
+    console.error('Error al hashear contraseña:', error);
     next(error);
   }
 });
@@ -117,24 +121,42 @@ usuarioSchema.pre('save', async function(next) {
 usuarioSchema.methods.comparePassword = async function(candidatePassword) {
   try {
     console.log('Comparando contraseña');
+    
     // Asegurarse de que la contraseña candidata sea una cadena
     if (typeof candidatePassword !== 'string') {
-      console.error('La contraseña proporcionada no es una cadena');
+      console.error('La contraseña proporcionada no es una cadena, tipo:', typeof candidatePassword);
       return false;
     }
     
-    // Verificar que la contraseña almacenada esté hasheada
-    if (!this.password || !this.password.startsWith('$2')) {
-      console.error('La contraseña almacenada no está hasheada correctamente');
+    // Verificar que la contraseña almacenada exista
+    if (!this.password) {
+      console.error('No hay contraseña almacenada para este usuario');
+      return false;
+    }
+
+    // Verificar que la contraseña esté hasheada correctamente
+    if (!this.password.startsWith('$2')) {
+      console.error('La contraseña almacenada no está hasheada correctamente:', this.password.substring(0, 3));
+      
+      // En desarrollo, podemos intentar una comparación directa como fallback
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('ADVERTENCIA: Intentando comparación directa de contraseña en modo desarrollo');
+        return candidatePassword === this.password;
+      }
       return false;
     }
     
-    // Comparar contraseñas
-    const isMatch = await bcrypt.compare(candidatePassword, this.password);
-    console.log(`Resultado de la comparación: ${isMatch}`);
-    return isMatch;
+    // Comparar contraseñas con bcrypt
+    try {
+      const isMatch = await bcrypt.compare(candidatePassword, this.password);
+      console.log(`Resultado de la comparación bcrypt: ${isMatch}`);
+      return isMatch;
+    } catch (bcryptError) {
+      console.error('Error específico de bcrypt al comparar:', bcryptError);
+      return false;
+    }
   } catch (error) {
-    console.error('Error al comparar contraseñas:', error);
+    console.error('Error general al comparar contraseñas:', error);
     return false;
   }
 };

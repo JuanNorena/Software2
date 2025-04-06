@@ -103,46 +103,88 @@ router.get('/estado/:estado', asyncHandler(async (req, res) => {
  * @param {Array} [req.body.descuentos] - Lista de descuentos a aplicar
  * @returns {Object} Datos de la liquidación creada con sus descuentos
  */
-router.post('/', asyncHandler(async (req, res) => {
+router.post('/', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
   try {
+    // Validar campos obligatorios
+    const camposRequeridos = ['empleado', 'fecha', 'sueldoBruto', 'sueldoNeto'];
+    for (const campo of camposRequeridos) {
+      if (!req.body[campo]) {
+        return res.status(400).json({ message: `El campo ${campo} es obligatorio` });
+      }
+    }
+    
+    // Validar que los montos sean números positivos
+    if (isNaN(parseFloat(req.body.sueldoBruto)) || parseFloat(req.body.sueldoBruto) < 0) {
+      return res.status(400).json({ message: 'El sueldo bruto debe ser un número positivo' });
+    }
+    
+    if (isNaN(parseFloat(req.body.sueldoNeto)) || parseFloat(req.body.sueldoNeto) < 0) {
+      return res.status(400).json({ message: 'El sueldo neto debe ser un número positivo' });
+    }
+    
     // Verificar si el empleado existe
     const empleadoExiste = await Empleado.findById(req.body.empleado);
     if (!empleadoExiste) {
       return res.status(404).json({ message: 'El empleado especificado no existe' });
     }
 
-    const liquidacion = new LiquidacionSueldo({
-      empleado: req.body.empleado,
-      estado: req.body.estado || 'emitido',
-      fecha: req.body.fecha,
-      sueldoBruto: req.body.sueldoBruto,
-      sueldoNeto: req.body.sueldoNeto,
-      totalDescuentos: req.body.totalDescuentos || 0
-    });
-
-    const nuevaLiquidacion = await liquidacion.save();
-
-    // Si hay descuentos, crearlos y asociarlos a la liquidación
-    if (req.body.descuentos && Array.isArray(req.body.descuentos)) {
-      const descuentosPromises = req.body.descuentos.map(descuento => {
-        const nuevoDescuento = new Descuento({
-          concepto: descuento.concepto,
-          valor: descuento.valor,
-          liquidacionSueldo: nuevaLiquidacion._id
-        });
-        return nuevoDescuento.save();
+    // Iniciar una sesión de transacción
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    
+    try {
+      const liquidacion = new LiquidacionSueldo({
+        empleado: req.body.empleado,
+        estado: req.body.estado || 'emitido',
+        fecha: req.body.fecha,
+        sueldoBruto: req.body.sueldoBruto,
+        sueldoNeto: req.body.sueldoNeto,
+        totalDescuentos: req.body.totalDescuentos || 0
       });
 
-      await Promise.all(descuentosPromises);
+      const nuevaLiquidacion = await liquidacion.save({ session });
+
+      // Si hay descuentos, crearlos y asociarlos a la liquidación
+      if (req.body.descuentos && Array.isArray(req.body.descuentos)) {
+        const descuentosPromises = req.body.descuentos.map(descuento => {
+          // Validar los campos de cada descuento
+          if (!descuento.concepto || isNaN(parseFloat(descuento.valor))) {
+            throw new Error('Los descuentos deben tener concepto y valor válido');
+          }
+          
+          const nuevoDescuento = new Descuento({
+            concepto: descuento.concepto,
+            valor: descuento.valor,
+            liquidacionSueldo: nuevaLiquidacion._id
+          });
+          return nuevoDescuento.save({ session });
+        });
+
+        await Promise.all(descuentosPromises);
+      }
+      
+      // Confirmar la transacción
+      await session.commitTransaction();
+
+      // Obtener la liquidación con los descuentos asociados
+      const liquidacionCompleta = await LiquidacionSueldo.findById(nuevaLiquidacion._id)
+        .populate('empleado', 'nombre rut cargo sueldoBase')
+        .populate('descuentos');
+
+      res.status(201).json({
+        message: 'Liquidación creada exitosamente',
+        liquidacion: liquidacionCompleta
+      });
+    } catch (error) {
+      // Si hay un error, abortar la transacción
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      // Finalizar la sesión
+      session.endSession();
     }
-
-    // Obtener la liquidación con los descuentos asociados
-    const liquidacionCompleta = await LiquidacionSueldo.findById(nuevaLiquidacion._id)
-      .populate('empleado', 'nombre rut cargo sueldoBase')
-      .populate('descuentos');
-
-    res.status(201).json(liquidacionCompleta);
   } catch (error) {
+    console.error('Error al crear liquidación:', error);
     res.status(400).json({ message: error.message });
   }
 }));
@@ -302,25 +344,41 @@ router.put('/:id/rechazar', authenticateUser, authorizeRoles(['ADMIN']), asyncHa
 router.post('/:id/pagar', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
   const { metodoPago, banco } = req.body;
   
-  if (!metodoPago || !banco) {
-    return res.status(400).json({
-      mensaje: 'Debe proporcionar método de pago y banco'
-    });
-  }
-  
   try {
+    // Validación de campos obligatorios
+    if (!metodoPago || !banco) {
+      return res.status(400).json({
+        mensaje: 'Debe proporcionar método de pago y banco'
+      });
+    }
+    
+    // Validar que el método de pago sea válido
+    if (!['cheque', 'deposito'].includes(metodoPago)) {
+      return res.status(400).json({
+        mensaje: 'El método de pago debe ser "cheque" o "deposito"'
+      });
+    }
+    
+    // Validar que el ID de liquidación sea válido
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        mensaje: 'El ID de liquidación proporcionado no es válido'
+      });
+    }
+    
     const resultado = await LiquidacionService.procesarPagoLiquidacion(
       req.params.id,
       { metodoPago, banco }
     );
     
-    res.json({
+    res.status(200).json({
       mensaje: 'Pago procesado correctamente',
       liquidacion: resultado.liquidacion,
       pagoSueldo: resultado.pagoSueldo,
       pagoProvisional: resultado.pagoProvisional
     });
   } catch (error) {
+    console.error('Error al procesar pago:', error);
     res.status(400).json({
       mensaje: 'Error al procesar el pago',
       error: error.message

@@ -103,24 +103,48 @@ router.get('/liquidacion/:liquidacionId', asyncHandler(async (req, res) => {
  * @param {number} req.body.totalPagoSalud - Monto para salud
  * @returns {Object} Nuevo pago de contabilidad provisional creado
  */
-router.post('/', asyncHandler(async (req, res) => {
-  // Verificar si la liquidación existe
-  const liquidacionExiste = await LiquidacionSueldo.findById(req.body.liquidacionSueldo);
-  if (!liquidacionExiste) {
-    return res.status(404).json({ message: 'La liquidación de sueldo especificada no existe' });
+router.post('/', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
+  try {
+    // Validar campos obligatorios
+    const camposRequeridos = ['liquidacionSueldo', 'periodoCorrespondiente', 'totalPago', 'totalPagoPension', 'totalPagoSalud'];
+    for (const campo of camposRequeridos) {
+      if (req.body[campo] === undefined) {
+        return res.status(400).json({ message: `El campo ${campo} es obligatorio` });
+      }
+    }
+
+    // Validar que los montos sean números positivos
+    const campos = ['totalPago', 'totalPagoPension', 'totalPagoSalud'];
+    for (const campo of campos) {
+      if (isNaN(parseFloat(req.body[campo])) || parseFloat(req.body[campo]) < 0) {
+        return res.status(400).json({ message: `El campo ${campo} debe ser un número positivo` });
+      }
+    }
+
+    // Verificar si la liquidación existe
+    const liquidacionExiste = await LiquidacionSueldo.findById(req.body.liquidacionSueldo);
+    if (!liquidacionExiste) {
+      return res.status(404).json({ message: 'La liquidación de sueldo especificada no existe' });
+    }
+
+    const pago = new PagoContabilidadProvisional({
+      liquidacionSueldo: req.body.liquidacionSueldo,
+      fechaPago: req.body.fechaPago || new Date(),
+      periodoCorrespondiente: req.body.periodoCorrespondiente,
+      totalPago: req.body.totalPago,
+      totalPagoPension: req.body.totalPagoPension,
+      totalPagoSalud: req.body.totalPagoSalud
+    });
+
+    const nuevoPago = await pago.save();
+    res.status(201).json({
+      message: 'Pago de contabilidad provisional creado exitosamente',
+      pago: nuevoPago
+    });
+  } catch (error) {
+    console.error('Error al crear pago provisional:', error);
+    res.status(400).json({ message: error.message });
   }
-
-  const pago = new PagoContabilidadProvisional({
-    liquidacionSueldo: req.body.liquidacionSueldo,
-    fechaPago: req.body.fechaPago,
-    periodoCorrespondiente: req.body.periodoCorrespondiente,
-    totalPago: req.body.totalPago,
-    totalPagoPension: req.body.totalPagoPension,
-    totalPagoSalud: req.body.totalPagoSalud
-  });
-
-  const nuevoPago = await pago.save();
-  res.status(201).json(nuevoPago);
 }));
 
 /**

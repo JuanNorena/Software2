@@ -23,6 +23,7 @@ const mongoose = require('mongoose');
  * @param {Object} req.body - Datos del empleado y usuario a crear
  * @param {string} req.body.username - Nombre de usuario
  * @param {string} req.body.password - Contraseña
+ * @param {string} req.body.email - Correo electrónico (OBLIGATORIO)
  * @param {string} req.body.nombre - Nombre completo del empleado
  * @param {string} req.body.cargo - Cargo que desempeña
  * @param {Date} req.body.fechaNacimiento - Fecha de nacimiento
@@ -37,21 +38,31 @@ const mongoose = require('mongoose');
  */
 router.post('/register', asyncHandler(async (req, res) => {
   try {
-    // Verificar si el usuario ya existe
+    // Validar campos obligatorios
+    const camposRequeridos = ['username', 'password', 'email', 'nombre', 'rut', 'empresaRut'];
+    
+    for (const campo of camposRequeridos) {
+      if (!req.body[campo]) {
+        return res.status(400).json({ message: `El campo ${campo} es obligatorio` });
+      }
+    }
+
+    // Verificar si el usuario ya existe por username
     const usuarioExistente = await Usuario.findOne({ username: req.body.username });
     if (usuarioExistente) {
       return res.status(400).json({ message: 'El nombre de usuario ya está en uso' });
+    }
+    
+    // Verificar si el email ya está registrado
+    const emailExistente = await Usuario.findOne({ email: req.body.email });
+    if (emailExistente) {
+      return res.status(400).json({ message: 'El email ya está registrado' });
     }
 
     // Verificar si el RUT ya existe
     const rutExistente = await Empleado.findOne({ rut: req.body.rut });
     if (rutExistente) {
       return res.status(400).json({ message: 'El RUT ya está registrado' });
-    }
-
-    // Validar que se proporcione el RUT de la empresa
-    if (!req.body.empresaRut) {
-      return res.status(400).json({ message: 'RUT de empresa no proporcionado' });
     }
 
     // Verificar si la empresa existe por RUT
@@ -79,6 +90,7 @@ router.post('/register', asyncHandler(async (req, res) => {
     // Crear el usuario asociado al empleado
     const usuario = new Usuario({
       username: req.body.username,
+      email: req.body.email, // Agregar el email que faltaba
       password: req.body.password,
       rol: 'EMPLEADO',
       empleado: nuevoEmpleado._id
@@ -113,7 +125,7 @@ router.post('/register', asyncHandler(async (req, res) => {
  * @route POST /api/auth/login
  * @access Public
  * @param {Object} req.body - Credenciales de inicio de sesión
- * @param {string} req.body.username - Nombre de usuario
+ * @param {string} req.body.username - Nombre de usuario o email
  * @param {string} req.body.password - Contraseña
  * @param {boolean} [req.body.recordarme=false] - Recordar sesión
  * @returns {Object} Token de autenticación y datos básicos del usuario
@@ -129,18 +141,47 @@ router.post('/login', asyncHandler(async (req, res) => {
       return res.status(400).json({ message: 'Usuario y contraseña son requeridos' });
     }
     
-    const resultado = await AuthService.login(username, password, !!recordarme);
-    
-    console.log(`Login exitoso para usuario: ${username}, rol: ${resultado.usuario.rol}`);
-    
-    res.json({
-      message: 'Inicio de sesión exitoso',
-      token: resultado.token,
-      usuario: resultado.usuario
-    });
+    // Intentar login directamente con las credenciales
+    try {
+      const resultado = await AuthService.login(username, password, !!recordarme);
+      
+      console.log(`Login exitoso para usuario: ${username}, rol: ${resultado.usuario.rol}`);
+      
+      res.json({
+        message: 'Inicio de sesión exitoso',
+        token: resultado.token,
+        usuario: resultado.usuario
+      });
+    } catch (loginError) {
+      console.error(`Error en primer intento de login: ${loginError.message}`);
+      
+      // Si el primer intento falla, verificar si el usuario está intentando iniciar sesión con email
+      if (username.includes('@')) {
+        try {
+          // Buscar el usuario por email
+          const usuarioPorEmail = await Usuario.findOne({ email: username });
+          if (usuarioPorEmail) {
+            // Intentar login con el username encontrado
+            const resultado = await AuthService.login(usuarioPorEmail.username, password, !!recordarme);
+            
+            return res.json({
+              message: 'Inicio de sesión exitoso',
+              token: resultado.token,
+              usuario: resultado.usuario
+            });
+          }
+        } catch (emailError) {
+          // Si falla el segundo intento, continuamos y retornamos el error original
+          console.error(`Error en segundo intento de login con email: ${emailError.message}`);
+        }
+      }
+      
+      // Si llegamos aquí, ambos intentos fallaron o el primero falló y no es un email
+      return res.status(401).json({ message: 'Credenciales inválidas' });
+    }
   } catch (error) {
-    console.error(`Error en login: ${error.message}`);
-    res.status(401).json({ message: error.message });
+    console.error(`Error general en login: ${error.message}`);
+    res.status(500).json({ message: 'Error interno del servidor' });
   }
 }));
 

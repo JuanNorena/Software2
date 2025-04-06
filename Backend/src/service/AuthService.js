@@ -64,7 +64,7 @@ class AuthService {
       throw new Error('Cuenta deshabilitada. Contacte al administrador');
     }
   
-    // Verificar la contraseña - añadimos logging para depuración
+    // Verificar la contraseña
     console.log(`Verificando contraseña para usuario ${username}`);
     const isPasswordValid = await usuario.comparePassword(password);
     console.log(`Resultado de verificación de contraseña: ${isPasswordValid ? 'válida' : 'inválida'}`);
