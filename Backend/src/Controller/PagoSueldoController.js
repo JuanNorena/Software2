@@ -1,7 +1,7 @@
 /**
- * @fileoverview Controlador para gestionar las operaciones relacionadas con los pagos de sueldos
+ * @fileoverview Controlador para gestionar pagos de sueldos
  * @author Juan Sebastian Noreña
- * @version 1.0.0
+ * @version 1.0.1
  */
 
 const express = require('express');
@@ -88,8 +88,21 @@ router.get('/liquidacion/:liquidacionId', authenticateUser, asyncHandler(async (
  * @param {number} req.body.monto - Monto del pago
  * @returns {Object} Nuevo pago de sueldo creado
  */
-router.post('/', authenticateUser, asyncHandler(async (req, res) => {
+router.post('/', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
   try {
+    // Validar campos obligatorios
+    const camposRequeridos = ['liquidacionSueldo', 'banco', 'metodoPago', 'monto'];
+    for (const campo of camposRequeridos) {
+      if (!req.body[campo]) {
+        return BaseController.handleBadRequest(res, `El campo ${campo} es obligatorio`);
+      }
+    }
+
+    // Validar que el método de pago sea válido
+    if (!['cheque', 'deposito'].includes(req.body.metodoPago)) {
+      return BaseController.handleBadRequest(res, 'El método de pago debe ser "cheque" o "deposito"');
+    }
+
     // Verificar si la liquidación existe
     const liquidacionExiste = await LiquidacionSueldo.findById(req.body.liquidacionSueldo);
     if (!liquidacionExiste) {
@@ -101,22 +114,45 @@ router.post('/', authenticateUser, asyncHandler(async (req, res) => {
       return BaseController.handleBadRequest(res, 'Esta liquidación de sueldo ya ha sido pagada');
     }
 
-    const pagoSueldo = new PagoSueldo({
-      liquidacionSueldo: req.body.liquidacionSueldo,
-      banco: req.body.banco,
-      fecha: req.body.fecha,
-      metodoPago: req.body.metodoPago,
-      monto: req.body.monto
-    });
+    // Iniciar una sesión de transacción
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    const nuevoPagoSueldo = await pagoSueldo.save();
+    try {
+      const pagoSueldo = new PagoSueldo({
+        liquidacionSueldo: req.body.liquidacionSueldo,
+        banco: req.body.banco,
+        fecha: req.body.fecha || new Date(),
+        metodoPago: req.body.metodoPago,
+        monto: req.body.monto
+      });
+      
+      // Guardar el pago dentro de la transacción
+      const nuevoPagoSueldo = await pagoSueldo.save({ session });
 
-    // Actualizar el estado de la liquidación a 'pagado'
-    liquidacionExiste.estado = 'pagado';
-    await liquidacionExiste.save();
+      // Actualizar el estado de la liquidación a 'pagado' dentro de la transacción
+      liquidacionExiste.estado = 'pagado';
+      await liquidacionExiste.save({ session });
 
-    BaseController.sendResponse(res, nuevoPagoSueldo, 201);
+      // Confirmar la transacción
+      await session.commitTransaction();
+      
+      BaseController.sendResponse(
+        res, 
+        nuevoPagoSueldo,
+        'Pago de sueldo registrado correctamente',
+        201
+      );
+    } catch (error) {
+      // Si hay un error, abortar la transacción
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      // Finalizar la sesión
+      session.endSession();
+    }
   } catch (error) {
+    console.error('Error al crear pago de sueldo:', error);
     BaseController.handleError(res, error);
   }
 }));

@@ -1,7 +1,7 @@
 /**
  * @fileoverview Modelo de datos para los usuarios del sistema
  * @author Juan Sebastian Noreña
- * @version 1.0.0
+ * @version 1.0.1
  */
 
 const mongoose = require('mongoose');
@@ -25,6 +25,14 @@ const usuarioSchema = new Schema({
     required: true,
     unique: true,
     trim: true
+  },
+  email: {
+    type: String,
+    required: false, // Cambiar de true a false para hacer el campo opcional
+    unique: true,
+    sparse: true, // Permite múltiples documentos sin email pero mantiene unicidad entre los que sí lo tienen
+    trim: true,
+    match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Por favor ingrese un email válido']
   },
   password: {
     type: String,
@@ -51,6 +59,16 @@ const usuarioSchema = new Schema({
     type: Boolean,
     default: true
   },
+  intentosFallidos: {
+    type: Number,
+    default: 0
+  },
+  fechaBloqueo: {
+    type: Date,
+    default: null
+  },
+  resetPasswordToken: String,
+  resetPasswordExpires: Date,
   empleado: {
     type: Schema.Types.ObjectId,
     ref: 'Empleado',
@@ -81,27 +99,61 @@ const usuarioSchema = new Schema({
  * @memberof UsuarioSchema
  */
 usuarioSchema.pre('save', async function(next) {
+  // Solo hashear la contraseña si ha sido modificada
   if (!this.isModified('password')) return next();
   
   try {
+    console.log('Hasheando contraseña para usuario:', this.username);
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
+    console.log('Contraseña hasheada correctamente');
     next();
   } catch (error) {
+    console.error('Error al hashear contraseña:', error);
     next(error);
   }
 });
 
 /**
- * Método para comparar contraseñas
- * @function
- * @name comparePassword
- * @memberof UsuarioSchema.methods
+ * Compara la contraseña proporcionada con la contraseña hasheada almacenada del usuario
  * @param {string} candidatePassword - Contraseña a comparar
  * @returns {Promise<boolean>} Verdadero si la contraseña coincide
  */
 usuarioSchema.methods.comparePassword = async function(candidatePassword) {
-  return bcrypt.compare(candidatePassword, this.password);
+  try {
+    console.log('Comparando contraseña');
+    
+    // Asegurarse de que la contraseña candidata sea una cadena
+    if (typeof candidatePassword !== 'string') {
+      console.error('La contraseña proporcionada no es una cadena, tipo:', typeof candidatePassword);
+      return false;
+    }
+    
+    // Verificar que la contraseña almacenada exista
+    if (!this.password) {
+      console.error('No hay contraseña almacenada para este usuario');
+      return false;
+    }
+
+    // Verificar que la contraseña esté hasheada correctamente
+    if (!this.password.startsWith('$2')) {
+      console.error('La contraseña almacenada no está hasheada correctamente:', this.password.substring(0, 3));
+      return false; // Eliminamos el fallback de texto plano por seguridad
+    }
+    
+    // Comparar contraseñas con bcrypt (forma segura)
+    try {
+      const isMatch = await bcrypt.compare(candidatePassword, this.password);
+      console.log(`Resultado de la comparación bcrypt: ${isMatch}`);
+      return isMatch;
+    } catch (bcryptError) {
+      console.error('Error específico de bcrypt al comparar:', bcryptError);
+      return false;
+    }
+  } catch (error) {
+    console.error('Error general al comparar contraseñas:', error);
+    return false;
+  }
 };
 
 /**

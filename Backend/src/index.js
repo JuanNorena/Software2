@@ -1,7 +1,7 @@
 /**
  * @fileoverview Punto de entrada principal de la API de PersonalPay
  * @author Juan Sebastian Noreña
- * @version 1.0.0
+ * @version 1.0.1
  */
 
 // Cargar variables de entorno
@@ -15,6 +15,8 @@ if (!process.env.JWT_SECRET) {
 
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
+const fs = require('fs-extra');
 
 // Importar rutas
 const empresaRoutes = require('./Controller/EmpresaController');
@@ -26,7 +28,6 @@ const pagoContabilidadProvisionalRoutes = require('./Controller/PagoContabilidad
 const descuentoRoutes = require('./Controller/DescuentoController');
 const authRoutes = require('./Controller/AuthController');
 const asistenciaRoutes = require('./Controller/AsistenciaController');
-// Eliminada la importación de: const liquidacionesRoutes = require('./Controller/LiquidacionesController');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -42,6 +43,15 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Directorio para archivos temporales (como PDFs)
+app.use('/temp', express.static(path.join(__dirname, '../temp')));
+
+// Asegurar que el directorio temporal para PDFs exista
+const tempPdfDir = path.join(__dirname, '../temp/pdf');
+if (!fs.existsSync(tempPdfDir)) {
+  fs.mkdirSync(tempPdfDir, { recursive: true });
+}
 
 /**
  * Conexión a MongoDB usando la clase Database
@@ -69,7 +79,6 @@ app.use('/api/pagos-sueldo', pagoSueldoRoutes);
 app.use('/api/pagos-contabilidad-provisional', pagoContabilidadProvisionalRoutes);
 app.use('/api/descuentos', descuentoRoutes);
 app.use('/api/asistencia', asistenciaRoutes);
-// Eliminada la ruta: app.use('/api/liquidaciones', liquidacionesRoutes);
 
 /**
  * Ruta de prueba para verificar el funcionamiento de la API

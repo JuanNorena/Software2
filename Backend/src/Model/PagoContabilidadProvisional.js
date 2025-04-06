@@ -1,7 +1,7 @@
 /**
  * @fileoverview Modelo de datos para los pagos de contabilidad provisional en el sistema
  * @author Juan Sebastian Noreña
- * @version 1.0.0
+ * @version 1.0.1
  */
 
 const mongoose = require('mongoose');

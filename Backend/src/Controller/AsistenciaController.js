@@ -1,7 +1,7 @@
 /**
  * @fileoverview Controlador para gestionar las operaciones relacionadas con asistencia de empleados
  * @author Juan Sebastian Noreña
- * @version 1.0.0
+ * @version 1.0.1
  */
 
 const express = require('express');
@@ -9,6 +9,7 @@ const router = express.Router();
 const { authenticateUser, authorizeRoles } = require('../middleware/authMiddleware');
 const AsistenciaService = require('../service/AsistenciaService');
 const asyncHandler = require('../middleware/asyncHandler');
+const mongoose = require('mongoose');
 
 /**
  * @description Obtiene el historial de asistencia del empleado autenticado
@@ -164,9 +165,22 @@ router.get('/empleado/:empleadoId/horas', authenticateUser, authorizeRoles(['ADM
  */
 router.post('/entrada/:empleadoId', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
   try {
+    if (!req.params.empleadoId) {
+      return res.status(400).json({ message: 'El ID del empleado es obligatorio' });
+    }
+    
+    // Validar que el empleadoId sea un ObjectId válido
+    if (!mongoose.Types.ObjectId.isValid(req.params.empleadoId)) {
+      return res.status(400).json({ message: 'El ID del empleado no es válido' });
+    }
+    
     const registro = await AsistenciaService.registrarEntrada(req.params.empleadoId);
-    res.status(201).json(registro);
+    res.status(201).json({
+      message: 'Entrada registrada exitosamente',
+      registro
+    });
   } catch (error) {
+    console.error('Error al registrar entrada:', error);
     res.status(400).json({ message: error.message });
   }
 }));
@@ -180,10 +194,96 @@ router.post('/entrada/:empleadoId', authenticateUser, authorizeRoles(['ADMIN']),
  */
 router.post('/salida/:empleadoId', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
   try {
+    if (!req.params.empleadoId) {
+      return res.status(400).json({ message: 'El ID del empleado es obligatorio' });
+    }
+    
+    // Validar que el empleadoId sea un ObjectId válido
+    if (!mongoose.Types.ObjectId.isValid(req.params.empleadoId)) {
+      return res.status(400).json({ message: 'El ID del empleado no es válido' });
+    }
+    
     const registro = await AsistenciaService.registrarSalida(req.params.empleadoId);
-    res.json(registro);
+    res.status(200).json({
+      message: 'Salida registrada exitosamente',
+      registro
+    });
   } catch (error) {
+    console.error('Error al registrar salida:', error);
     res.status(400).json({ message: error.message });
+  }
+}));
+
+/**
+ * @description Obtiene el detalle de días y horas trabajadas del empleado autenticado
+ * @route GET /api/asistencias/mis-registros
+ * @access Empleado
+ * @param {number} req.query.mes - Mes (1-12)
+ * @param {number} req.query.anio - Año
+ * @returns {Object} Detalles de días y horas trabajadas
+ */
+router.get('/mis-registros', authenticateUser, asyncHandler(async (req, res) => {
+  try {
+    // Verificar si el usuario es un empleado
+    if (!req.user.empleadoId) {
+      return res.status(403).json({
+        mensaje: 'Acceso denegado. Usuario no es un empleado.'
+      });
+    }
+    
+    const { mes, anio } = req.query;
+    
+    // Validar que se proporcionaron mes y año
+    if (!mes || !anio) {
+      return res.status(400).json({ 
+        mensaje: 'Debe proporcionar mes y año para consultar registros de asistencia'
+      });
+    }
+    
+    const resultado = await asistenciaService.obtenerDetalleAsistenciaPeriodo(
+      req.user.empleadoId, 
+      parseInt(mes), 
+      parseInt(anio)
+    );
+    
+    res.json(resultado);
+  } catch (error) {
+    console.error('Error al obtener registros de asistencia:', error);
+    res.status(500).json({ mensaje: 'Error al obtener los registros de asistencia', error: error.message });
+  }
+}));
+
+/**
+ * @description Obtiene el detalle de asistencia de un empleado específico (solo para admin)
+ * @route GET /api/asistencias/empleado/:empleadoId/detalle
+ * @access Admin
+ * @param {string} req.params.empleadoId - ID del empleado
+ * @param {number} req.query.mes - Mes (1-12)
+ * @param {number} req.query.anio - Año
+ * @returns {Object} Detalles de días y horas trabajadas del empleado
+ */
+router.get('/empleado/:empleadoId/detalle', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
+  try {
+    const { empleadoId } = req.params;
+    const { mes, anio } = req.query;
+    
+    // Validar que se proporcionaron mes y año
+    if (!mes || !anio) {
+      return res.status(400).json({ 
+        mensaje: 'Debe proporcionar mes y año para consultar registros de asistencia'
+      });
+    }
+    
+    const resultado = await asistenciaService.obtenerDetalleAsistenciaPeriodo(
+      empleadoId, 
+      parseInt(mes), 
+      parseInt(anio)
+    );
+    
+    res.json(resultado);
+  } catch (error) {
+    console.error('Error al obtener detalles de asistencia:', error);
+    res.status(500).json({ mensaje: 'Error al obtener los detalles de asistencia', error: error.message });
   }
 }));
 

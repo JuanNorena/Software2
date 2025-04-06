@@ -1,7 +1,7 @@
 /**
  * @fileoverview Controlador base con funciones comunes para evitar duplicación
  * @author Juan Sebastian Noreña
- * @version 1.0.0
+ * @version 1.0.1
  */
 
 /**

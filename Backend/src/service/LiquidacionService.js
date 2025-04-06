@@ -1,6 +1,7 @@
 /**
  * @fileoverview Servicio para la generación y cálculo de liquidaciones de sueldo
- * @version 1.0.0
+ * @author Juan Sebastian Noreña
+ * @version 1.0.1
  */
 
 const LiquidacionSueldo = require('../Model/LiquidacionSueldo');

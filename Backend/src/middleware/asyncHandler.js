@@ -1,7 +1,11 @@
 /**
- * @fileoverview Middleware para manejar funciones asíncronas en rutas Express
+  * @fileoverview Middleware para manejar funciones asíncronas en rutas Express
  * Envuelve las funciones de controlador para capturar errores y pasarlos al middleware de manejo de errores
- * 
+ * @author Juan Sebastian Noreña
+ * @version 1.0.1
+ */
+
+/**
  * @param {Function} fn - Función asíncrona del controlador
  * @returns {Function} Middleware de Express con manejo de errores
  */

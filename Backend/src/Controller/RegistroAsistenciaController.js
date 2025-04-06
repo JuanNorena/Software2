@@ -1,13 +1,15 @@
 /**
  * @fileoverview Controlador para gestionar las operaciones CRUD de registros de asistencia
  * @author Juan Sebastian Noreña
- * @version 1.0.0
+ * @version 1.0.1
  */
 
 const express = require('express');
 const router = express.Router();
 const RegistroAsistencia = require('../Model/RegistroAsistencia');
 const Empleado = require('../Model/Empleado');
+const { authenticateUser, authorizeRoles } = require('../middleware/authMiddleware');
+const asyncHandler = require('../middleware/asyncHandler');
 
 /**
  * @description Obtiene todos los registros de asistencia en el sistema
@@ -91,8 +93,16 @@ router.get('/fecha/:inicio/:fin', async (req, res) => {
  * @param {number} req.body.totalHorasTrabajadas - Total de horas trabajadas
  * @returns {Object} Datos del registro creado
  */
-router.post('/', async (req, res) => {
+router.post('/', authenticateUser, authorizeRoles(['ADMIN']), async (req, res) => {
   try {
+    // Validar campos obligatorios
+    const camposRequeridos = ['empleado', 'fecha', 'horaEntrada'];
+    for (const campo of camposRequeridos) {
+      if (!req.body[campo]) {
+        return res.status(400).json({ message: `El campo ${campo} es obligatorio` });
+      }
+    }
+    
     // Verificar si el empleado existe
     const empleadoExiste = await Empleado.findById(req.body.empleado);
     if (!empleadoExiste) {
@@ -103,13 +113,17 @@ router.post('/', async (req, res) => {
       empleado: req.body.empleado,
       fecha: req.body.fecha,
       horaEntrada: req.body.horaEntrada,
-      horaSalida: req.body.horaSalida,
-      totalHorasTrabajadas: req.body.totalHorasTrabajadas
+      horaSalida: req.body.horaSalida || '',
+      totalHorasTrabajadas: req.body.totalHorasTrabajadas || 0
     });
 
     const nuevoRegistro = await registro.save();
-    res.status(201).json(nuevoRegistro);
+    res.status(201).json({
+      message: 'Registro de asistencia creado exitosamente',
+      registro: nuevoRegistro
+    });
   } catch (error) {
+    console.error('Error al crear registro de asistencia:', error);
     res.status(400).json({ message: error.message });
   }
 });
