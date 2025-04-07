@@ -51,6 +51,33 @@ class AuthService {
   
     console.log(`Usuario encontrado con ID: ${usuario._id}, rol: ${usuario.rol}`);
   
+    // Caso especial para el desarrollo, permitir el login del admin con la contraseña directa
+    if (process.env.NODE_ENV === 'development' && username === 'admin' && password === (process.env.DEFAULT_ADMIN_PASSWORD || '123admin')) {
+      console.log('Inicio de sesión de administrador en modo desarrollo');
+      
+      // Resetear contador de intentos fallidos
+      usuario.intentosFallidos = 0;
+      usuario.fechaBloqueo = null;
+      usuario.ultimoAcceso = new Date();
+      await usuario.save();
+      
+      // Generar token directamente
+      const token = this.generateToken({
+        id: usuario._id,
+        username: usuario.username,
+        rol: usuario.rol
+      });
+      
+      return {
+        token,
+        usuario: {
+          id: usuario._id,
+          username: usuario.username,
+          rol: usuario.rol
+        }
+      };
+    }
+  
     // Verificar si la cuenta está bloqueada temporalmente
     if (usuario.fechaBloqueo && usuario.fechaBloqueo > new Date()) {
       const minutosRestantes = Math.ceil((usuario.fechaBloqueo - new Date()) / (1000 * 60));
@@ -66,7 +93,7 @@ class AuthService {
   
     // Verificar la contraseña
     console.log(`Verificando contraseña para usuario ${username}`);
-    console.log(`Contraseña proporcionada: ${password}`);
+    // Remover el log de contraseña por seguridad
     const isPasswordValid = await usuario.comparePassword(password);
     console.log(`Resultado de verificación de contraseña: ${isPasswordValid ? 'válida' : 'inválida'}`);
     

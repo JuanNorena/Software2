@@ -6,7 +6,9 @@
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "test:db": "node src/utils/testConnection.js"
+    "test:db": "node src/utils/testConnection.js",
+    "check:admin": "node src/utils/adminPasswordCheck.js",
+    "fix:admin": "node src/utils/adminPasswordCheck.js --repair"
   },
   "keywords": [],
   "author": "",
