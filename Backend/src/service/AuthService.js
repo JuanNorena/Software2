@@ -231,33 +231,47 @@ class AuthService {
    * @throws {Error} Si no existe el usuario con ese email
    */
   async solicitarRestablecerPassword(email) {
-    // Buscar usuario por email
-    const usuario = await Usuario.findOne({ email });
-    if (!usuario) {
-      // Por seguridad, no revelamos si el email existe o no
-      return true;
-    }
-
-    // Generar token aleatorio
-    const token = crypto.randomBytes(20).toString('hex');
-    
-    // Establecer token y expiración (24 horas)
-    usuario.resetPasswordToken = token;
-    usuario.resetPasswordExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 horas
-    
-    await usuario.save();
-    
-    // Enviar correo
     try {
-      await EmailService.enviarCorreoRestablecimiento(email, token);
-      return true;
-    } catch (error) {
-      console.error('Error al enviar correo de restablecimiento:', error);
-      // Invalidar el token si falla el envío
-      usuario.resetPasswordToken = undefined;
-      usuario.resetPasswordExpires = undefined;
+      console.log(`Buscando usuario con email: ${email}`);
+      
+      // Buscar usuario por email (case-insensitive)
+      const usuario = await Usuario.findOne({ 
+        email: { $regex: new RegExp(`^${email}$`, 'i') }
+      });
+      
+      if (!usuario) {
+        console.log(`No se encontró usuario con email: ${email}`);
+        return false; // Indicamos que no se encontró, pero el controlador maneja esto sin revelarlo
+      }
+      
+      console.log(`Usuario encontrado: ${usuario.username} (ID: ${usuario._id})`);
+  
+      // Generar token aleatorio
+      const token = crypto.randomBytes(20).toString('hex');
+      
+      // Establecer token y expiración (24 horas)
+      usuario.resetPasswordToken = token;
+      usuario.resetPasswordExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 horas
+      
       await usuario.save();
-      throw new Error('Error al enviar correo de restablecimiento');
+      console.log(`Token de recuperación generado para usuario: ${usuario.username}`);
+      
+      // Enviar correo
+      try {
+        await EmailService.enviarCorreoRestablecimiento(email, token);
+        console.log(`Correo de restablecimiento enviado a: ${email}`);
+        return true;
+      } catch (error) {
+        console.error('Error al enviar correo de restablecimiento:', error);
+        // Invalidar el token si falla el envío
+        usuario.resetPasswordToken = undefined;
+        usuario.resetPasswordExpires = undefined;
+        await usuario.save();
+        throw new Error('Error al enviar correo de restablecimiento');
+      }
+    } catch (error) {
+      console.error(`Error en recuperación de contraseña para ${email}:`, error);
+      throw error;
     }
   }
 
