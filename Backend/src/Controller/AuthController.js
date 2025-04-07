@@ -241,11 +241,27 @@ router.post('/solicitar-restablecimiento', asyncHandler(async (req, res) => {
     if (!email) {
       return res.status(400).json({ message: 'Email es requerido' });
     }
+
+    console.log(`Solicitud de restablecimiento para email: ${email}`);
+    
+    // Verificar formato de email válido
+    const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
+    if (!emailRegex.test(email)) {
+      console.log(`Formato de email inválido: ${email}`);
+      return res.status(400).json({ message: 'Formato de email inválido' });
+    }
+
+    const emailExiste = await Usuario.findOne({ email: { $regex: new RegExp(`^${email}$`, 'i') } });
+    if (!emailExiste) {
+      console.log(`Email no encontrado en la base de datos: ${email}`);
+      // Por seguridad, no revelamos esto al cliente
+      return res.json({
+        message: 'Se ha enviado un correo con instrucciones para restablecer la contraseña (si el email existe en nuestro sistema)'
+      });
+    }
     
     await AuthService.solicitarRestablecerPassword(email);
     
-    // Por seguridad, siempre devolvemos la misma respuesta
-    // independientemente de si el email existe o no
     res.json({
       message: 'Se ha enviado un correo con instrucciones para restablecer la contraseña'
     });

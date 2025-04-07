@@ -4,6 +4,20 @@
  * @version 1.0.1
  */
 
+// Verificar carga de variables de entorno
+const dotenv = require('dotenv');
+const result = dotenv.config();
+
+if (result.error) {
+  console.error('❌ Error al cargar archivo .env:', result.error);
+} else {
+  console.log('✅ Variables de entorno cargadas correctamente');
+  // Mostrar algunas variables para verificar (sin mostrar valores completos de secretos)
+  const apiKey = process.env.MAILERSEND_API_KEY || '';
+  console.log(`MAILERSEND_API_KEY: ${apiKey.substring(0, 15)}...${apiKey.length > 15 ? apiKey.substring(apiKey.length - 5) : ''}`);
+  console.log(`EMAIL_FROM: ${process.env.EMAIL_FROM || 'no configurado'}`);
+}
+
 // Cargar variables de entorno
 require('dotenv').config();
 

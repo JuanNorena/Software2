@@ -26,15 +26,14 @@ async function initData() {
       
       // Actualizar la contraseña del admin para asegurar que es la esperada
       if (process.env.NODE_ENV === 'development') {
-        // Solo en desarrollo, actualizar la contraseña para pruebas
-        adminExists.password = await bcrypt.hash("123admin", 10);
+        // Solo en desarrollo, actualizar la contraseña directamente sin hashear
+        // para evitar el doble hash del middleware pre-save
+        adminExists.password = process.env.DEFAULT_ADMIN_PASSWORD || "123admin";
+        adminExists._isDirectPasswordUpdate = true; // Flag para indicar actualización directa
         await adminExists.save();
-        console.log('✅ Contraseña de administrador actualizada a "123admin" para pruebas');
+        console.log(`✅ Contraseña de administrador actualizada a "${process.env.DEFAULT_ADMIN_PASSWORD || '123admin'}" para pruebas`);
       }
-    }
-    
-    if (empresasCount === 0) {
-      // Crear empresa de prueba
+    } else {
       const empresaPrueba = new Empresa({
         nombre: "PersonalPay",
         rut: "76543210-8",
@@ -48,12 +47,12 @@ async function initData() {
       console.log('Datos de la empresa:');
       console.log(JSON.stringify(empresaGuardada, null, 2));
       
-      // Crear usuario administrador con la contraseña esperada "123admin"
+      // Crear usuario administrador (sin hashear, el middleware lo hará)
       if (!adminExists) {
         const usuarioAdmin = new Usuario({
           username: "admin",
           email: "admin@personalpay.com", 
-          password: await bcrypt.hash("123admin", 10),
+          password: process.env.DEFAULT_ADMIN_PASSWORD || "123admin", // Sin hashear, el middleware lo hará
           rol: "ADMIN",
           enabled: true,
           accountNonExpired: true,
@@ -62,12 +61,12 @@ async function initData() {
         });
         
         await usuarioAdmin.save();
-        console.log('✅ Usuario administrador creado (usuario: admin, contraseña: 123admin)');
+        console.log(`✅ Usuario administrador creado (usuario: admin, contraseña: ${process.env.DEFAULT_ADMIN_PASSWORD || '123admin'})`);
       }
-    } else {
-      const empresa = await Empresa.findOne();
-      console.log('✅ Empresa ya existe con ID:', empresa._id);
     }
+    
+    const empresa = await Empresa.findOne();
+    console.log('✅ Empresa ya existe con ID:', empresa._id);
   } catch (error) {
     console.error('❌ Error al inicializar datos:', error);
   }

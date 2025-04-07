@@ -99,10 +99,17 @@ const usuarioSchema = new Schema({
  * @memberof UsuarioSchema
  */
 usuarioSchema.pre('save', async function(next) {
-  // Solo hashear la contraseña si ha sido modificada
-  if (!this.isModified('password')) return next();
-  
   try {
+    // Si es una actualización directa de contraseña, omitir el hasheo
+    if (this._isDirectPasswordUpdate) {
+      delete this._isDirectPasswordUpdate; // Limpiar la bandera
+      console.log('Omitiendo hasheo para actualización directa de contraseña');
+      return next();
+    }
+    
+    // Solo hashear la contraseña si ha sido modificada
+    if (!this.isModified('password')) return next();
+    
     console.log('Hasheando contraseña para usuario:', this.username);
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
