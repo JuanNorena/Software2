@@ -66,7 +66,6 @@ class AuthService {
   
     // Verificar la contraseña
     console.log(`Verificando contraseña para usuario ${username}`);
-    console.log(`Contraseña proporcionada: ${password}`);
     const isPasswordValid = await usuario.comparePassword(password);
     console.log(`Resultado de verificación de contraseña: ${isPasswordValid ? 'válida' : 'inválida'}`);
     
