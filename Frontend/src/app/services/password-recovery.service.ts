@@ -1,37 +1,33 @@
+// password-recovery.service.ts
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class PasswordRecoveryService {
-  private apiUrl = 'http://localhost:3000/api/auth'; // ajustá si es necesario
+  private apiUrl = environment.apiUrl;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
-  /**
-   * Envía una solicitud de código de recuperación al correo
-   */
+  // Método para solicitar código de recuperación
   solicitarCodigo(email: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/solicitar-restablecimiento`, { email });
+    return this.http.post(`${this.apiUrl}/auth/solicitar-reset`, { email });
   }
 
-  /**
-   * Verifica si el código enviado al correo es válido
-   */
+  // Método para verificar el código enviado
   verificarCodigo(email: string, codigo: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/verificar-codigo`, { email, codigo });
+    return this.http.post(`${this.apiUrl}/auth/verificar-codigo`, { email, codigo });
   }
 
-  /**
-   * Cambia la contraseña si el código fue verificado exitosamente
-   */
-  cambiarContrasenia(email: string, nuevaContrasenia: string, codigo: string) {
-    return this.http.post(`${this.apiUrl}/cambiar-contraseña`, {
-      email,
-      nuevaContrasenia,
-      codigo
+  // Método para cambiar la contraseña
+  cambiarContrasenia(email: string, codigo: string, nuevaContrasenia: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/auth/cambiar-password`, { 
+      email, 
+      codigo, 
+      nuevaContrasenia 
     });
   }
 }

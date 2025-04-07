@@ -1,0 +1,43 @@
+<!-- components/sidebar/sidebar.component.html -->
+<div class="sidebar">
+    <div class="logo-container">
+      <img src="assets/logo.png" alt="PersonalPay" class="logo">
+      <h2>PersonalPay</h2>
+    </div>
+    
+    <nav class="nav-menu">
+      <a [routerLink]="['/dashboard']" routerLinkActive="active" class="nav-item">
+        Inicio
+      </a>
+      
+      <!-- Enlaces para ADMIN -->
+      <ng-container *ngIf="rolUsuario === 'ADMIN'">
+        <a [routerLink]="['/registro']" routerLinkActive="active" class="nav-item">
+          Gestión de Empleados
+        </a>
+        <a [routerLink]="['/control-asistencia']" routerLinkActive="active" class="nav-item">
+          Control de Asistencia
+        </a>
+        <a [routerLink]="['/liquidaciones']" routerLinkActive="active" class="nav-item">
+          Liquidaciones y Pagos
+        </a>
+      </ng-container>
+      
+      <!-- Enlaces para EMPLEADO -->
+      <ng-container *ngIf="rolUsuario === 'EMPLEADO'">
+        <a [routerLink]="['/perfil']" routerLinkActive="active" class="nav-item">
+          Perfil
+        </a>
+        <a [routerLink]="['/pagos']" routerLinkActive="active" class="nav-item">
+          Pagos y liquidaciones
+        </a>
+        <a [routerLink]="['/asistencia']" routerLinkActive="active" class="nav-item">
+          Consulta de Asistencia
+        </a>
+      </ng-container>
+      
+      <a (click)="cerrarSesion()" class="nav-item logout">
+        Cerrar Sesión
+      </a>
+    </nav>
+  </div>
