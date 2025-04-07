@@ -62,4 +62,9 @@ export class AuthService {
     const userData = localStorage.getItem('usuario');
     return userData ? JSON.parse(userData) : null;
   }
+
+  getRolUsuario(): string | null {
+    const user = this.getUserData();
+    return user?.rol || null;
+  }
 }

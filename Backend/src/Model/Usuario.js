@@ -139,18 +139,16 @@ usuarioSchema.methods.comparePassword = async function(candidatePassword) {
     // Verificar que la contraseña esté hasheada correctamente
     if (!this.password.startsWith('$2')) {
       console.error('La contraseña almacenada no está hasheada correctamente:', this.password.substring(0, 3));
-      
-      // En desarrollo, podemos intentar una comparación directa como fallback
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('ADVERTENCIA: Intentando comparación directa de contraseña en modo desarrollo');
-        return candidatePassword === this.password;
-      }
-      return false;
+      return false; // Eliminamos el fallback de texto plano por seguridad
     }
     
+<<<<<<< HEAD
     // Comparar contraseñas con bcrypt
     console.log(this.password);
     console.log(candidatePassword);
+=======
+    // Comparar contraseñas con bcrypt (forma segura)
+>>>>>>> main
     try {
       const isMatch = await bcrypt.compare(candidatePassword, this.password);
       console.log(`Resultado de la comparación bcrypt: ${isMatch}`);
