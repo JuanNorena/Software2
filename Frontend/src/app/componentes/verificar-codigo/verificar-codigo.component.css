@@ -1,0 +1,60 @@
+.container-principal {
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
+    height: 100vh;
+  }
+  
+  .imagen-lado-izquierdo {
+    flex: 1;
+    background-color: #f4f4f4;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .imagen-lado-izquierdo img {
+    width: 100%;
+    max-width: 400px;
+  }
+  
+  .formulario-lado-derecho {
+    flex: 1;
+    padding: 40px;
+    background-color: #ddd;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .logo-img {
+    width: 70px;
+    margin-bottom: 20px;
+  }
+  
+  form {
+    width: 100%;
+    max-width: 350px;
+  }
+  
+  input {
+    width: 100%;
+    padding: 10px;
+    margin: 5px 0 20px;
+    border: 1px solid #aaa;
+  }
+  
+  button {
+    width: 100%;
+    padding: 10px;
+    background-color: #0c2d52;
+    color: white;
+    font-weight: bold;
+    border: none;
+  }
+  
+  .error {
+    color: red;
+    font-size: 0.9em;
+  }
+  

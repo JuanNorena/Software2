@@ -127,7 +127,6 @@ usuarioSchema.pre('save', async function(next) {
  * @returns {Promise<boolean>} Verdadero si la contraseña coincide
  */
 usuarioSchema.methods.comparePassword = async function(candidatePassword) {
-  console.log('Iniciando comparación de contraseñas...');
   try {
     console.log('Comparando contraseña');
     
