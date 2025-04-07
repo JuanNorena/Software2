@@ -7,6 +7,7 @@
 // Cargar variables de entorno
 require('dotenv').config();
 
+
 // Configurar variable de entorno JWT_SECRET si no existe
 if (!process.env.JWT_SECRET) {
   process.env.JWT_SECRET = 'personalpay_secret_key';

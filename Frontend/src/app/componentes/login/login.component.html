@@ -1,29 +1,23 @@
 <div class="text-center; border: 2px solid #333;">
-  <!-- Mensaje de bienvenida -->
-  <div class="text-center"
-    style="font: 1em Inria-serif; font-size: 26px; font-weight: bold; color: #00306e; margin-bottom: 5px;">
+  <!-- Mensaje de bienvenida  -->
+  <div class="text-center" style="font: 1em Inria-serif; font-size: 26px; font-weight: bold; color: #00306e; margin-bottom: 5px;">
     <h3>Bienvenido al Portal de Empleados</h3>
   </div>
 </div>
 
-<!-- Contenedor principal con margen superior reducido -->
-<div class="container d-flex justify-content-center align-items-center"
-  style="margin-top: 20px; margin-bottom: 20px;">
+<!-- Contenedor principal -->
+<div class="container d-flex justify-content-center align-items-center" style="margin-top: 20px; margin-bottom: 20px;">
+  
+  <!-- Imagen-->
+  <img src="/login.png" alt height="500px" style="border: 2px solid #333; border-right: none;">
 
-  <!-- Imagen ilustrativa del login -->
-  <img src="/login.png" alt height="420px" style="border: 2px solid #333;">
-
-  <!-- Tarjeta que contiene el formulario de inicio de sesión -->
-  <div class="card p-4"
-    style="width: 500px; height: 420px; background-color: #D9D9D9; border: 2px solid #333;">
-
-    <!-- Encabezado con el título "Iniciar sesión" -->
+  <!-- Contenedor del login  -->
+  <div class="card p-4" style="width: 500px; height: 500px; background-color: #D9D9D9; border: 2px solid #333; border-left: 1px solid #aaa; margin-left: -1px;">
     <div class="card-header text-center" style="font: 1em Inria-serif;">
       <h3>Iniciar sesión</h3>
     </div>
 
     <div class="card-body">
-      <!-- Actualiza el formulario en login.component.html para mostrar errores y carga -->
       <form [formGroup]="loginForm" (ngSubmit)="login()" novalidate>
         <!-- Campo para ingresar el nombre de usuario -->
         <div class="mb-3">
@@ -89,7 +83,7 @@
           </div>
 
           <!-- Olvido Contraseña-->
-          <a routerLink="/password-recovery"
+          <a routerLink="/password"
             class="text-primary fw-medium"
             style="text-decoration: underline; cursor: pointer;">
             Olvidé mi contraseña
