@@ -1,0 +1,31 @@
+<div class="container mt-5">
+    <h2 class="mb-4">Verificar código</h2>
+  
+    <form [formGroup]="formulario" (ngSubmit)="onSubmit()">
+      <div class="mb-3">
+        <label for="codigo" class="form-label">Código de verificación</label>
+        <input
+          type="text"
+          id="codigo"
+          formControlName="codigo"
+          class="form-control"
+          [class.is-invalid]="formulario.get('codigo')?.invalid && formulario.get('codigo')?.touched"
+          maxlength="6"
+        />
+        <div class="invalid-feedback">
+          El código debe tener 6 dígitos.
+        </div>
+      </div>
+  
+      <div *ngIf="mensajeError" class="alert alert-danger">
+        {{ mensajeError }}
+      </div>
+  
+      <button type="submit" class="btn btn-primary" [disabled]="cargando">
+        {{ cargando ? 'Verificando...' : 'Verificar' }}
+      </button>
+    </form>
+  
+    <button class="btn btn-link mt-3" (click)="router.navigate(['/login'])">Volver al login</button>
+  </div>
+  
