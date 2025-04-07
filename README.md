@@ -10,34 +10,34 @@
 
 2. Marcación de entrada/salida (Kiosko Digital):
 
-    - nterfaz para que los empleados registren su entrada y salida diaria digitando su cédula.
+    - Interfaz para que los empleados registren su entrada y salida diaria digitando su cédula.
 
     - Registro de fecha y hora del evento.
 
 
 3. Control de asistencia:
 
-    -Visualización y administración de los registros de entrada y salida.
+    - Visualización y administración de los registros de entrada y salida.
 
-    -Cálculo de días trabajados y horas totales para la generación de la nómina.
+    - Cálculo de días trabajados y horas totales para la generación de la nómina.
 
 
 4. Liquidación de sueldo:
 
-    -Cálculo automático de sueldos netos.
+    - Cálculo automático de sueldos netos.
 
-    -Descuentos (ISAPRE, AFP, adicionales).
+    - Descuentos (ISAPRE, AFP, adicionales).
 
-    -Generación de archivo para depósito o impresión de cheque.
+    - Generación de archivo para depósito o impresión de cheque.
 
 
 5. Portal del empleado (Kiosko e Internet):
 
-    -Acceso individual al perfil.
+    - Acceso individual al perfil.
 
-    -Visualización e impresión de liquidaciones pasadas.
+    - Visualización e impresión de liquidaciones pasadas.
 
-    -Información sobre cotizaciones pagadas y días trabajados.
+    - Información sobre cotizaciones pagadas y días trabajados.
 
 ## 🔧 Tecnologías utilizadas
 - Backend: `JavaScript`
