@@ -4,7 +4,7 @@ import { RoleGuard } from './guards/role.guard';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
-  { path: 'dashboard', loadComponent: () => import('./dashboard/dashboard.component').then(m => m.DashboardComponent) },
+  { path: 'dashboard', loadComponent: () => import('./componentes/dashboard/dashboard.component').then(m => m.DashboardComponent) },
 
   // Recuperación de contraseña
   { path: 'password', loadComponent: () => import('./componentes/password/password.component').then(m => m.PasswordComponent) },
