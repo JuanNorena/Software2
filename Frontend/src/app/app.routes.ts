@@ -12,7 +12,7 @@ export const routes: Routes = [
   { path: 'cambiar-password', loadComponent: () => import('./componentes/cambiar-password/cambiar-password.component').then(m => m.CambiarPasswordComponent) },
 
   // Registro con guard
-  { path: 'registro', loadComponent: () => import('./registro/registro.component').then(m => m.RegistroComponent), canActivate: [RoleGuard] },
+  { path: 'registro', loadComponent: () => import('./componentes/registro/registro.component').then(m => m.RegistroComponent), canActivate: [RoleGuard] },
 
   // Rutas por defecto
   { path: '', redirectTo: '/login', pathMatch: 'full' },
