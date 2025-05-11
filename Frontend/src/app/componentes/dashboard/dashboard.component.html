@@ -1,86 +1,261 @@
-<!-- dashboard/dashboard.component.html -->
 <div class="dashboard-container">
-  <!-- Incluir el sidebar -->
-  <app-sidebar [rolUsuario]="rolUsuario"></app-sidebar>
-  
+
   <!-- Contenido principal -->
   <div class="content-area">
-    <div class="container mt-5">
-      <div class="text-center mb-4">
-        <h2>Bienvenido, {{ nombreUsuario }}</h2>
-        <p><strong>Rol:</strong> {{ rolUsuario }}</p>
-      </div>
-    
-      <!-- Contenido para ADMIN -->
-      <div *ngIf="rolUsuario === 'ADMIN'" class="card p-4 mb-3 shadow border-primary">
-        <h4 class="text-primary">Panel de Administración</h4>
-        <div class="admin-dashboard">
-          <div class="stats-container">
-            <div class="stat-card">
-              <div class="stat-icon">
-                <i class="bi bi-people"></i>
-              </div>
-              <div class="stat-content">
-                <h5>Total de Empleados</h5>
-                <p class="stat-value">120</p>
-              </div>
-            </div>
-            
-            <div class="stat-card">
-              <div class="stat-icon">
-                <i class="bi bi-calendar-check"></i>
-              </div>
-              <div class="stat-content">
-                <h5>Asistencia de Hoy</h5>
-                <p class="stat-value">85%</p>
-              </div>
-            </div>
-            
-            <div class="stat-card">
-              <div class="stat-icon">
-                <i class="bi bi-file-text"></i>
-              </div>
-              <div class="stat-content">
-                <h5>Liquidaciones Pendientes</h5>
-                <p class="stat-value">10</p>
-              </div>
-            </div>
+    <!-- Contenido para ADMIN -->
+    <!-- Contenido para ADMIN -->
+    <div *ngIf="rolUsuario === 'ADMIN'" class="admin-dashboard">
+      <div class="employee-header">
+        <div class="date-display">
+          <i class="bi bi-calendar3"></i>
+          <span>{{ currentDate | date:'d MMMM yyyy' }}</span>
+        </div>
+        <div class="user-welcome">
+          <div class="user-avatar">
+            <i class="bi bi-person-circle"></i>
           </div>
-          
-          <div class="quick-access mt-4">
-            <h5>Acceso Rápido</h5>
-            <ul>
-              <li><a [routerLink]="['/registro']">Gestión de empleados</a></li>
-              <li><a [routerLink]="['/reportes']">Reportes de empresa</a></li>
-              <li><a [routerLink]="['/configuracion']">Configuraciones del sistema</a></li>
-            </ul>
+          <div class="welcome-text">
+            <h2>Bienvenido {{ nombreUsuario }}</h2>
+            <p>{{ rolUsuario }}</p>
           </div>
         </div>
       </div>
-    
-      <!-- Contenido para EMPLEADO -->
-      <div *ngIf="rolUsuario === 'EMPLEADO'" class="card p-4 shadow border-success">
-        <h4 class="text-success">Panel de Empleado</h4>
-        <div class="employee-dashboard">
-          <div class="quick-access mt-3">
-            <ul>
-              <li><a [routerLink]="['/pagos']">Ver recibos de sueldo</a></li>
-              <li><a [routerLink]="['/perfil']">Actualizar perfil</a></li>
-              <li><a [routerLink]="['/vacaciones']">Solicitar vacaciones</a></li>
-            </ul>
-          </div>
-          
-          <div class="recent-activity mt-4">
-            <h5>Actividad Reciente</h5>
-            <div class="activity-item">
-              <div class="activity-date">23/03/2024</div>
-              <div class="activity-desc">Pago de nómina procesado</div>
+
+      <div class="admin-stats-container">
+        <!-- Estadística de Total de Empleados -->
+        <div class="admin-stat-card">
+          <div class="stat-header">
+            <div class="stat-icon-container">
+              <img src="./grupo.png" alt="Empleados"
+                class="stat-image">
             </div>
-            <div class="activity-item">
-              <div class="activity-date">15/03/2024</div>
-              <div class="activity-desc">Solicitud de permiso aprobada</div>
+            <div class="stat-title">Total de Empleados</div>
+          </div>
+          <div class="stat-value-large" [class.loading]="cargandoEmpleados">
+            {{ cargandoEmpleados ? '...' : totalEmpleados }}
+          </div>
+        </div>
+
+        <!-- Estadística de Asistencia de Hoy -->
+        <div class="admin-stat-card">
+          <div class="stat-header">
+            <div class="stat-icon-container">
+              <img src="./escritura-en-la-pagina.png" alt="Asistencia"
+                class="stat-image">
+            </div>
+            <div class="stat-title">Asistencia de Hoy</div>
+          </div>
+          <div class="stat-value-large"
+            [ngClass]="{'text-success': asistenciaHoyPorcentaje >= 75, 'text-warning': asistenciaHoyPorcentaje >= 50 && asistenciaHoyPorcentaje < 75, 'text-danger': asistenciaHoyPorcentaje < 50}"
+            [class.loading]="cargandoAsistenciaHoy">
+            {{ cargandoAsistenciaHoy ? '...' : asistenciaHoyPorcentaje + '%' }}
+          </div>
+        </div>
+
+        <!-- Estadística de Liquidaciones Pendientes -->
+        <div class="admin-stat-card">
+          <div class="stat-header">
+            <div class="stat-icon-container">
+              <img src="./liquidez.png" alt="Pendientes"
+                class="stat-image">
+            </div>
+            <div class="stat-title">Liquidaciones Pendientes</div>
+          </div>
+          <div class="stat-value-large"
+            [class.loading]="cargandoLiquidacionesPendientes">
+            {{ cargandoLiquidacionesPendientes ? '...' : liquidacionesPendientes
+            }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Accesos rápidos para administrador -->
+      <div class="admin-quick-links">
+        <a [routerLink]="['/gestion-empleado']" class="admin-quick-link">
+          <i class="bi bi-person-plus"></i>
+          <span>Gestión de Empleados</span>
+        </a>
+        <a [routerLink]="['/control-asistencia']" class="admin-quick-link">
+          <i class="bi bi-calendar-check"></i>
+          <span>Control de Asistencia</span>
+        </a>
+        <a [routerLink]="['/liquidaciones']" class="admin-quick-link">
+          <i class="bi bi-cash-stack"></i>
+          <span>Liquidaciones y Pagos</span>
+        </a>
+      </div>
+
+      <!-- Últimas liquidaciones pendientes -->
+      <div class="admin-recent-section"
+        *ngIf="ultimasLiquidacionesPendientes.length > 0">
+        <h3>Liquidaciones Pendientes de Aprobación</h3>
+        <div class="admin-table-container">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Empleado</th>
+                <th>Fecha</th>
+                <th>Monto</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let liquidacion of ultimasLiquidacionesPendientes">
+                <td>{{ liquidacion.empleado?.nombre || 'No disponible' }}</td>
+                <td>{{ liquidacion.fecha | date:'dd/MM/yyyy' }}</td>
+                <td>{{ formatMonto(liquidacion.sueldoNeto) }}</td>
+                <td><span
+                    class="estado-badge estado-{{ liquidacion.estado }}">{{
+                    liquidacion.estado }}</span></td>
+                <td>
+                  <button class="table-action-btn"
+                    [routerLink]="['/liquidaciones']">
+                    <i class="bi bi-eye"></i>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="view-all-link">
+          <a [routerLink]="['/liquidaciones']">Ver todas las liquidaciones</a>
+        </div>
+      </div>
+
+      <div class="admin-recent-section"
+        *ngIf="ultimasLiquidacionesPendientes.length === 0 && !cargandoLiquidacionesPendientes">
+        <h3>Liquidaciones Pendientes de Aprobación</h3>
+        <div class="no-data-message">
+          <i class="bi bi-info-circle"></i>
+          <p>No hay liquidaciones pendientes de aprobación en este momento</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contenido para EMPLEADO -->
+    <div *ngIf="rolUsuario === 'EMPLEADO'" class="employee-dashboard">
+      <div class="employee-header">
+        <div class="date-display">
+          <i class="bi bi-calendar3"></i>
+          <span>{{ currentDate | date:'d MMMM yyyy' }}</span>
+        </div>
+        <div class="user-welcome">
+          <div class="user-avatar">
+            <i class="bi bi-person-circle"></i>
+          </div>
+          <div class="welcome-text">
+            <h2>Bienvenido {{ nombreUsuario }}</h2>
+            <p>{{ rolUsuario }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="dashboard-cards-container">
+        <!-- Tarjeta de Asistencia -->
+        <div class="dashboard-card attendance-card">
+          <div class="card-icon">
+            <i class="bi bi-calendar-check"></i>
+          </div>
+          <div class="card-content">
+            <h3>Asistencia del mes</h3>
+            <div class="percentage-display">
+              <div class="percentage-number">{{ attendancePercentage }}%</div>
+              <div class="progress-bar">
+                <div class="progress-fill"
+                  [style.width]="attendancePercentage + '%'"
+                  [style.background-color]="getProgressColor(attendancePercentage)"></div>
+              </div>
             </div>
           </div>
+        </div>
+
+        <!-- Tarjeta de Liquidación más reciente -->
+        <div class="dashboard-card settlement-card">
+          <div class="card-icon">
+            <i class="bi bi-cash"></i>
+          </div>
+          <div class="card-content">
+            <h3>Última liquidación</h3>
+            <div class="settlement-details" *ngIf="ultimaLiquidacion">
+              <div class="detail-row">
+                <span>Fecha:</span>
+                <span>{{ ultimaLiquidacion.fecha | date:'dd/MM/yyyy' }}</span>
+              </div>
+              <div class="detail-row">
+                <span>Estado:</span>
+                <span [ngClass]="'estado-' + ultimaLiquidacion.estado">
+                  <i class="bi bi-circle-fill estado-dot"></i>
+                  {{ ultimaLiquidacion.estado | titlecase }}
+                </span>
+              </div>
+              <div class="detail-row">
+                <span>Monto:</span>
+                <span>{{ formatMonto(ultimaLiquidacion.sueldoNeto) }}</span>
+              </div>
+            </div>
+            <div *ngIf="!ultimaLiquidacion && !cargandoLiquidacion"
+              class="no-data">
+              No hay liquidaciones disponibles
+            </div>
+            <div *ngIf="cargandoLiquidacion" class="loading-indicator">
+              <div class="spinner-sm"></div>
+              <span>Cargando...</span>
+            </div>
+            <button class="action-button"
+              [disabled]="!ultimaLiquidacion || cargandoLiquidacion"
+              (click)="descargarLiquidacion()">
+              <i class="bi bi-download"></i>
+              Descargar liquidación
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Accesos rápidos -->
+      <div class="quick-links-section">
+        <h3>Accesos Rápidos</h3>
+        <div class="quick-links-grid">
+          <a [routerLink]="['/perfil']" class="quick-link-card">
+            <i class="bi bi-person"></i>
+            <span>Mi Perfil</span>
+          </a>
+          <a [routerLink]="['/pagos']" class="quick-link-card">
+            <i class="bi bi-cash-coin"></i>
+            <span>Pagos y liquidaciones</span>
+          </a>
+          <a [routerLink]="['/asistencia']" class="quick-link-card">
+            <i class="bi bi-calendar-week"></i>
+            <span>Consulta de Asistencia</span>
+          </a>
+          <a href="#" class="quick-link-card"
+            (click)="registrarAsistencia($event)">
+            <i class="bi bi-clock"></i>
+            <span>Registrar Asistencia</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Actividad reciente -->
+      <div class="recent-activity-section">
+        <h3>Actividad Reciente</h3>
+        <div class="activity-list" *ngIf="!cargandoActividades">
+          <div class="activity-item" *ngFor="let activity of recentActivities">
+            <div class="activity-date">
+              <i class="bi bi-calendar-event"></i>
+              <span>{{ activity.date | date:'dd/MM/yyyy' }}</span>
+            </div>
+            <div class="activity-content">
+              <p>{{ activity.description }}</p>
+            </div>
+          </div>
+          <div *ngIf="recentActivities.length === 0" class="no-activity">
+            No hay actividades recientes para mostrar
+          </div>
+        </div>
+        <div *ngIf="cargandoActividades" class="loading-activity">
+          <div class="spinner"></div>
+          <span>Cargando actividades...</span>
         </div>
       </div>
     </div>

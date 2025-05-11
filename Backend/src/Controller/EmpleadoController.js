@@ -8,6 +8,7 @@ const express = require('express');
 const router = express.Router();
 const Empleado = require('../Model/Empleado');
 const Empresa = require('../Model/Empresa');
+const Usuario = require('../Model/Usuario');
 const BaseController = require('./BaseController');
 const { authenticateUser, authorizeRoles } = require('../middleware/authMiddleware');
 const asyncHandler = require('../middleware/asyncHandler');
@@ -24,26 +25,68 @@ router.get('/', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async 
   res.json(empleados);
 }));
 
+
 /**
- * @description Obtiene un empleado específico por su ID
+ * @description Obtiene un empleado específico por su ID junto con datos de usuario asociado
  * @route GET /api/empleados/:id
- * @access Admin
+ * @access Admin o propietario del perfil
  * @param {string} id - ID del empleado a buscar
- * @returns {Object} Datos completos del empleado incluyendo su empresa
+ * @returns {Object} Datos completos del empleado incluyendo su empresa y datos de usuario
  */
-router.get('/:id', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async (req, res) => {
+router.get('/:id', authenticateUser, asyncHandler(async (req, res) => {
+  // Agregar logging para depuración
+  console.log('Usuario solicitando acceso a perfil de empleado:');
+  console.log('- ID solicitado:', req.params.id);
+  console.log('- Usuario rol:', req.user.rol);
+  console.log('- Usuario empleadoId:', req.user.empleadoId);
+  
+  // Convertir ambos a string para comparación segura
+  const requestedId = req.params.id.toString().trim();
+  const userEmpleadoId = req.user.empleadoId ? req.user.empleadoId.toString().trim() : '';
+  
+  console.log('- ID solicitado (normalizado):', requestedId);
+  console.log('- Usuario empleadoId (normalizado):', userEmpleadoId);
+  
   // Verificar si el usuario es ADMIN o si está accediendo a su propio perfil
-  if (req.user.rol !== 'ADMIN' && req.user.empleadoId !== req.params.id) {
+  const isAdmin = req.user.rol === 'ADMIN';
+  const isOwnProfile = userEmpleadoId === requestedId;
+  
+  console.log('- ¿Es admin?', isAdmin);
+  console.log('- ¿Es perfil propio?', isOwnProfile);
+  
+  if (!isAdmin && !isOwnProfile) {
+    console.log('Acceso denegado: No es admin ni perfil propio');
     return res.status(403).json({ message: 'No tiene permisos para ver este empleado' });
   }
-  
-  const empleado = await Empleado.findById(req.params.id).populate('empresa', 'nombre rut');
-  if (!empleado) {
-    return res.status(404).json({ message: 'Empleado no encontrado' });
+ 
+  // Buscar el empleado
+  try {
+    const empleado = await Empleado.findById(req.params.id).populate('empresa', 'nombre rut');
+    if (!empleado) {
+      console.log('Empleado no encontrado en la base de datos');
+      return res.status(404).json({ message: 'Empleado no encontrado' });
+    }
+    
+    // Buscar información de usuario asociado
+    // Aquí es donde está el cambio: buscar el usuario usando empleado como referencia
+    const usuario = await Usuario.findOne({ empleado: empleado._id });
+    
+    // Preparar respuesta
+    const respuesta = empleado.toObject();
+    
+    // Incluir información del usuario si se encontró
+    if (usuario) {
+      respuesta.email = usuario.email || null;
+      respuesta.username = usuario.username || null;
+    }
+    
+    console.log('Enviando respuesta con datos combinados empleado/usuario');
+    res.json(respuesta);
+  } catch (error) {
+    console.error('Error al buscar empleado o usuario:', error);
+    res.status(500).json({ message: 'Error al buscar información', error: error.message });
   }
-  res.json(empleado);
 }));
-
 /**
  * @description Obtiene todos los empleados de una empresa específica
  * @route GET /api/empleados/empresa/:empresaRut

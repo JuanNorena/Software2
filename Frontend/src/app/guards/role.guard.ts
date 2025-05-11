@@ -23,8 +23,21 @@ export class RoleGuard implements CanActivate {
     const userRole = this.authService.getUserRole();
     console.log(`Verificando acceso para ruta ${state.url}, rol del usuario: ${userRole}`);
     
+    // Verificar si existe un rol requerido en los datos de la ruta
+    const requiredRole = route.data['role'] as string;
+    
+    if (requiredRole) {
+      console.log(`Rol requerido en datos de ruta: ${requiredRole}`);
+      if (userRole !== requiredRole) {
+        console.log(`Acceso denegado: Se requiere rol ${requiredRole}, usuario tiene ${userRole}`);
+        return this.router.parseUrl('/dashboard');
+      }
+      return true;
+    }
+    
+    // Si no hay rol especificado en data, usar la lógica basada en path
     // Rutas exclusivas para ADMIN
-    if (route.routeConfig?.path === 'registro' || 
+    if (route.routeConfig?.path === 'gestion-empleado' || 
         route.routeConfig?.path === 'control-asistencia' || 
         route.routeConfig?.path === 'liquidaciones') {
       

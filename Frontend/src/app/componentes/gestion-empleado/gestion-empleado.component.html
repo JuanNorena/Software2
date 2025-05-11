@@ -1,0 +1,254 @@
+<!-- Contenedor principal -->
+<div class="dashboard-container">
+  <!-- Contenido principal -->
+  <div class="content-area">
+    <div class="admin-dashboard">
+      <div class="employee-header">
+        <div class="date-display">
+          <i class="bi bi-calendar3"></i>
+          <span>{{ currentDate | date:'d MMMM yyyy' }}</span>
+        </div>
+        <div class="user-welcome">
+          <div class="user-avatar">
+            <i class="bi bi-person-circle"></i>
+          </div>
+          <div class="welcome-text">
+            <h2>Gestión de Empleados</h2>
+            <p>Administra la información y cuentas del personal</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sección de registro/edición -->
+      <div class="admin-recent-section mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h3 class="mb-0">
+            <i class="bi bi-person-plus me-2"></i>{{ modoEdicion ? 'Editar Empleado' : 'Registrar Nuevo Empleado' }}
+          </h3>
+          <button type="button" class="action-button" (click)="limpiarFormulario()" *ngIf="modoEdicion">
+            <i class="bi bi-plus-lg me-1"></i>Crear Nuevo
+          </button>
+        </div>
+        
+        <!-- Formulario de registro/edición -->
+        <form [formGroup]="empleadoForm" (ngSubmit)="guardarEmpleado()" novalidate>
+          <!-- Sección de datos de acceso - solo visible en modo creación -->
+          <div *ngIf="!modoEdicion" class="seccion-form mb-4">
+            <h5 class="mb-3"><i class="bi bi-shield-lock me-2"></i>Datos de acceso</h5>
+            
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label for="username" class="form-label">Nombre de usuario *</label>
+                <input type="text" id="username" formControlName="username" class="form-control" placeholder="Usuario">
+                <div *ngIf="hasError('username')" class="text-danger small">Campo requerido</div>
+              </div>
+              
+              <div class="col-md-4">
+                <label for="email" class="form-label">Correo electrónico *</label>
+                <input type="email" id="email" formControlName="email" class="form-control" placeholder="Correo">
+                <div *ngIf="hasError('email')" class="text-danger small">Correo inválido</div>
+              </div>
+              
+              <div class="col-md-4">
+                <label for="password" class="form-label">Contraseña *</label>
+                <input type="password" id="password" formControlName="password" class="form-control" placeholder="Contraseña">
+                <div *ngIf="hasError('password')" class="text-danger small">
+                  <div *ngIf="empleadoForm.get('password')?.errors?.['required']">Campo requerido</div>
+                  <div *ngIf="empleadoForm.get('password')?.errors?.['minlength']">Mínimo 8 caracteres</div>
+                </div>
+              </div>
+            </div>
+          </div>
+            
+          <!-- Sección de datos personales y laborales -->
+          <div class="seccion-form">
+            <h5 class="mb-3"><i class="bi bi-person-vcard me-2"></i>Datos personales y laborales</h5>
+            
+            <div class="row g-3">
+              <!-- Primera fila - 3 columnas -->
+              <div class="col-md-4">
+                <label for="nombre" class="form-label">Nombre *</label>
+                <input type="text" id="nombre" formControlName="nombre" class="form-control" placeholder="Nombre completo">
+                <div *ngIf="hasError('nombre')" class="text-danger small">Campo requerido</div>
+              </div>
+              
+              <div class="col-md-4">
+                <label for="cargo" class="form-label">Cargo</label>
+                <input type="text" id="cargo" formControlName="cargo" class="form-control" placeholder="Cargo">
+              </div>
+              
+              <div class="col-md-4">
+                <label for="rut" class="form-label">Rut *</label>
+                <input type="text" id="rut" formControlName="rut" class="form-control" placeholder="RUT">
+                <div *ngIf="hasError('rut')" class="text-danger small">RUT inválido o requerido</div>
+              </div>
+              
+              <!-- Segunda fila - 3 columnas -->
+              <div class="col-md-4">
+                <label for="sueldoBase" class="form-label">Sueldo en bruto</label>
+                <input type="number" id="sueldoBase" formControlName="sueldoBase" class="form-control" placeholder="Sueldo bruto">
+              </div>
+              
+              <div class="col-md-4">
+                <label for="fechaNacimiento" class="form-label">Fecha de nacimiento</label>
+                <input type="date" id="fechaNacimiento" formControlName="fechaNacimiento" class="form-control">
+              </div>
+              
+              <div class="col-md-4">
+                <label for="id" class="form-label">ID empleado</label>
+                <input type="text" id="id" formControlName="id" class="form-control" placeholder="ID">
+              </div>
+              
+              <!-- Tercera fila - 3 columnas -->
+              <div class="col-md-4">
+                <label for="profesion" class="form-label">Profesión</label>
+                <input type="text" id="profesion" formControlName="profesion" class="form-control" placeholder="Profesión">
+              </div>
+              
+              <div class="col-md-4">
+                <label for="numeroCuentaDigital" class="form-label">Cuenta digital</label>
+                <input type="text" id="numeroCuentaDigital" formControlName="numeroCuentaDigital" class="form-control" placeholder="Cuenta digital">
+              </div>
+              
+              <div class="col-md-4">
+                <label for="empresaRut" class="form-label">RUT empresa *</label>
+                <input type="text" id="empresaRut" formControlName="empresaRut" class="form-control" placeholder="RUT empresa">
+                <div *ngIf="hasError('empresaRut')" class="text-danger small">Campo requerido</div>
+              </div>
+              
+              <!-- Cuarta fila - para checkbox -->
+              <div class="col-md-12">
+                <div class="form-check mt-2">
+                  <input type="checkbox" class="form-check-input" id="esEncargadoPersonal" formControlName="esEncargadoPersonal">
+                  <label class="form-check-label" for="esEncargadoPersonal">Encargado de personal</label>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Mensajes de error y éxito -->
+          <div *ngIf="errorMessage" class="alert alert-danger mt-3">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage }}
+          </div>
+          
+          <div *ngIf="successMessage" class="alert alert-success mt-3">
+            <i class="bi bi-check-circle-fill me-2"></i>{{ successMessage }}
+          </div>
+          
+          <!-- Botones de acción -->
+          <div class="d-flex justify-content-between mt-4">
+            <div>
+              <button type="button" class="action-button" style="background-color: #6c757d;" (click)="limpiarFormulario()">
+                <i class="bi bi-x-lg me-1"></i>Cancelar
+              </button>
+            </div>
+            <div class="d-flex gap-2">
+              <button type="button" class="action-button" style="background-color: #6c757d;" (click)="editarEmpleado()" [disabled]="!empleadoSeleccionado">
+                <i class="bi bi-pencil-fill me-1"></i>Editar
+              </button>
+              
+              <button type="submit" class="action-button" [disabled]="empleadoForm.invalid || loading">
+                <span *ngIf="loading" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                <i *ngIf="!loading" class="bi" [ngClass]="modoEdicion ? 'bi-save' : 'bi-person-plus'"></i>
+                {{ modoEdicion ? 'Actualizar' : 'Registrar' }}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+      
+      <!-- Sección de listado de empleados -->
+      <div class="admin-recent-section mt-5">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h3 class="mb-0">
+            <i class="bi bi-people-fill me-2"></i>Listado de Empleados
+          </h3>
+          <button type="button" class="action-button" (click)="limpiarFormulario()">
+            <i class="bi bi-plus-lg me-1"></i>Crear Nuevo
+          </button>
+        </div>
+        
+        <!-- Buscador de empleados -->
+        <div class="row mb-4">
+          <div class="col-12">
+            <div class="input-group">
+              <span class="input-group-text">
+                <i class="bi bi-search"></i>
+              </span>
+              <input type="text" class="form-control" placeholder="Buscar empleado por nombre, RUT, cargo o profesión" [(ngModel)]="filtroBusqueda">
+            </div>
+          </div>
+        </div>
+        
+        <!-- Tabla de empleados -->
+        <div class="admin-table-container">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Rut</th>
+                <th>Fecha nacimiento</th>
+                <th>Profesión</th>
+                <th>Cargo</th>
+                <th>Sueldo</th>
+                <th class="text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let empleado of empleadosFiltrados()">
+                <td class="fw-semibold">{{ empleado.nombre }}</td>
+                <td>{{ empleado.rut }}</td>
+                <td>{{ empleado.fechaNacimiento | date:'dd/MM/yyyy' }}</td>
+                <td>{{ empleado.profesion }}</td>
+                <td>{{ empleado.cargo }}</td>
+                <td>{{ empleado.sueldoBase | currency:'CLP':'symbol':'1.0-0' }}</td>
+                <td class="text-center">
+                  <button class="table-action-btn" title="Editar" (click)="seleccionarEmpleado(empleado)">
+                    <i class="bi bi-pencil-fill"></i>
+                  </button>
+                  <button class="table-action-btn" title="Eliminar" (click)="confirmarEliminar(empleado)">
+                    <i class="bi bi-trash-fill"></i>
+                  </button>
+                </td>
+              </tr>
+              <tr *ngIf="empleados.length === 0">
+                <td colspan="7" class="text-center py-4">
+                  <div class="no-data-message">
+                    <i class="bi bi-inbox-fill"></i>
+                    <p>No hay empleados registrados</p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de confirmación de eliminación -->
+<div class="modal fade" id="eliminarModal" tabindex="-1" aria-labelledby="eliminarModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="eliminarModalLabel">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>Confirmar eliminación
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>¿Está seguro que desea eliminar al empleado?</p>
+        <p class="fw-bold mb-0">{{ empleadoAEliminar?.nombre }}</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+          <i class="bi bi-x-lg me-1"></i>Cancelar
+        </button>
+        <button type="button" class="btn btn-danger" (click)="eliminarEmpleado()">
+          <i class="bi bi-trash-fill me-1"></i>Eliminar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

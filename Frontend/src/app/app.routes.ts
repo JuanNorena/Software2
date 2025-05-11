@@ -13,8 +13,8 @@ export const routes: Routes = [
 
   // Rutas para ADMIN
    { 
-    path: 'registro', 
-    loadComponent: () => import('./componentes/registro/registro.component').then(m => m.RegistroComponent), 
+    path: 'gestion-empleado', 
+    loadComponent: () => import('./componentes/gestion-empleado/gestion-empleado.component').then(m => m.GestionEmpleadosComponent), 
     canActivate: [RoleGuard],
     data: { role: 'ADMIN' }
   },
@@ -24,11 +24,21 @@ export const routes: Routes = [
     canActivate: [RoleGuard],
     data: { role: 'ADMIN' }
   },
-  // { path: 'control-asistencia', loadComponent: () => import('./componentes/control-asistencia/control-asistencia.component').then(m => m.ControlAsistenciaComponent), canActivate: [RoleGuard] },
+   { 
+    path: 'control-asistencia', 
+    loadComponent: () => import('./componentes/control-asistencia/control-asistencia.component').then(m => m.ControlAsistenciaComponent), 
+    canActivate: [RoleGuard],
+    data: { role: 'ADMIN' }
+  },
 
 
   // // Rutas para EMPLEADO
-  // { path: 'perfil', loadComponent: () => import('./componentes/perfil/perfil.component').then(m => m.PerfilComponent) },
+  { 
+  path: 'perfil', 
+  loadComponent: () => import('./componentes/perfil/perfil.component').then(m => m.PerfilComponent),
+  canActivate: [RoleGuard],
+  data: { role: 'EMPLEADO' }
+  },
   { 
     path: 'pagos', 
     loadComponent: () => import('./componentes/pagos/pagos.component').then(m => m.PagosComponent),

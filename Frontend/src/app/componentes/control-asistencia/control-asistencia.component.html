@@ -1,0 +1,184 @@
+<div class="dashboard-container">
+  <!-- Incluir el sidebar -->
+  <app-sidebar [rolUsuario]="rolUsuario"></app-sidebar>
+  
+  <!-- Contenido principal -->
+  <div class="content-area">
+    <div class="control-asistencia-container">
+      <div class="header-section">
+        <h1>Control de Asistencia <span class="admin-name">[{{ nombreUsuario }}]</span></h1>
+        
+        <div class="search-bar">
+          <input type="text" placeholder="Buscar Asistencia de Empleado" [(ngModel)]="busquedaEmpleado">
+          <button class="search-button">
+            <i class="bi bi-search"></i>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Sección de filtros -->
+      <div class="filters-section">
+        <button class="filter-toggle-btn" (click)="toggleFiltros()">
+          <i class="bi" [ngClass]="mostrarFiltros ? 'bi-funnel-fill' : 'bi-funnel'"></i>
+          Filtros
+        </button>
+        
+        <div class="filters-controls" *ngIf="mostrarFiltros">
+          <div class="filter-group">
+            <label>Fecha Inicio:</label>
+            <input type="date" [(ngModel)]="fechaInicio">
+          </div>
+          
+          <div class="filter-group">
+            <label>Fecha Fin:</label>
+            <input type="date" [(ngModel)]="fechaFin">
+          </div>
+          
+          <div class="filter-group">
+            <label>Empleado:</label>
+            <select [(ngModel)]="empleadoSeleccionado">
+              <option value="">Todos los empleados</option>
+              <option *ngFor="let emp of filtrarEmpleados()" [value]="emp._id">
+                {{ emp.nombre }} ({{ emp.cargo }})
+              </option>
+            </select>
+          </div>
+          
+          <div class="filter-actions">
+            <button class="filter-btn apply" (click)="aplicarFiltros()">
+              <i class="bi bi-check-circle"></i> Aplicar
+            </button>
+            <button class="filter-btn reset" (click)="resetearFiltros()">
+              <i class="bi bi-x-circle"></i> Resetear
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Tabla de registros de asistencia -->
+      <div class="table-section">
+        <div class="table-loading" *ngIf="cargando">
+          <div class="spinner"></div>
+          <p>Cargando registros de asistencia...</p>
+        </div>
+        
+        <table class="asistencia-table" *ngIf="!cargando">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Hora de Entrada</th>
+              <th>Hora de Salida</th>
+              <th>Estado</th>
+              <th>Empleado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let registro of registrosAsistencia">
+              <td>{{ formatFecha(registro.fecha) }}</td>
+              <td>{{ formatHora(registro.horaEntrada) }}</td>
+              <td>{{ formatHora(registro.horaSalida) }}</td>
+              <td>
+                <span class="estado-badge" [ngClass]="getEstadoClase(registro)">
+                  {{ getEstadoTexto(registro) }}
+                </span>
+              </td>
+              <td>{{ registro.empleado?.nombre || 'N/A' }}</td>
+              <td class="acciones-column">
+                <button *ngIf="!registro.horaEntrada" class="action-btn" 
+                        (click)="registrarEntrada(registro.empleado._id || registro.empleado)" 
+                        title="Registrar entrada">
+                  <i class="bi bi-box-arrow-in-right"></i>
+                </button>
+                <button *ngIf="registro.horaEntrada && !registro.horaSalida" class="action-btn" 
+                        (click)="registrarSalida(registro.empleado._id || registro.empleado)" 
+                        title="Registrar salida">
+                  <i class="bi bi-box-arrow-right"></i>
+                </button>
+              </td>
+            </tr>
+            
+            <!-- Mensaje cuando no hay datos -->
+            <tr *ngIf="registrosAsistencia.length === 0">
+              <td colspan="6" class="no-data-message">
+                No se encontraron registros de asistencia para los filtros seleccionados
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      
+      <!-- Sección de estadísticas -->
+      <div class="stats-section">
+        <div class="stats-row">
+          <!-- Estadística de asistencia de hoy -->
+          <div class="stat-card">
+            <div class="stat-icon-container">
+              <div class="stat-icon">
+                <i class="bi bi-calendar-check"></i>
+              </div>
+            </div>
+            <div class="stat-content">
+              <h3>Asistencia de Hoy</h3>
+              <div class="stat-value-large" [class.loading]="cargandoEstadisticas">
+                {{ cargandoEstadisticas ? '...' : asistenciaHoyPorcentaje + '%' }}
+              </div>
+            </div>
+          </div>
+          
+          <!-- Estadística de total de empleados -->
+          <div class="stat-card">
+            <div class="stat-icon-container">
+              <div class="stat-icon">
+                <i class="bi bi-people"></i>
+              </div>
+            </div>
+            <div class="stat-content">
+              <h3>Total de Empleados</h3>
+              <div class="stat-value-large">
+                {{ totalEmpleados }}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Gráficos de asistencia -->
+        <div class="stats-row">
+          <div class="chart-card">
+            <h3>Gráfica de Asistencia</h3>
+            <div class="chart-placeholder">
+              <!-- Se sustituiría por un componente de gráfico real -->
+              <div class="chart-stats">
+                <div class="chart-stat">
+                  <span class="dot dot-asistio"></span>
+                  <span class="label">Asistió:</span>
+                  <span class="value">{{ estadisticasAsistencia.asistio }}</span>
+                </div>
+                <div class="chart-stat">
+                  <span class="dot dot-en-jornada"></span>
+                  <span class="label">En Jornada:</span>
+                  <span class="value">{{ estadisticasAsistencia.enJornada }}</span>
+                </div>
+                <div class="chart-stat">
+                  <span class="dot dot-ausente"></span>
+                  <span class="label">Ausente:</span>
+                  <span class="value">{{ estadisticasAsistencia.ausente }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="chart-card">
+            <h3>Gráfica de Ingresos</h3>
+            <div class="chart-placeholder">
+              <!-- Se sustituiría por un componente de gráfico real -->
+              <p class="chart-message">
+                Datos de ingresos por hora. Aquí se mostraría un gráfico de barras.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

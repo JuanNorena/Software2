@@ -1,0 +1,107 @@
+<div class="perfil-container">
+  <div class="header">
+    <div class="logo-container">
+      <img src="./trabajadores.png" alt="PersonalPay" class="logo">
+    </div>
+    <div class="nombre-empleado">
+      <h2>{{empleado.nombre || '[Nombre de Empleado]'}}</h2>
+    </div>
+  </div>
+  
+  <div class="info-container">
+    <h2 class="seccion-titulo">Información Personal</h2>
+    
+    <!-- Mostrar spinner mientras carga -->
+    <div *ngIf="cargando" class="cargando-contenedor">
+      <div class="spinner"></div>
+      <p>Cargando datos personales...</p>
+    </div>
+    
+    <!-- Mostrar mensaje de error si ocurre alguno -->
+    <div *ngIf="error" class="error-mensaje">
+      <p>{{error}}</p>
+    </div>
+    
+    <!-- Información personal cuando ya ha cargado -->
+    <div *ngIf="!cargando && !error" class="datos-personales">
+      <div class="perfil-row">
+        <div class="imagen-perfil">
+          <img src="./escritura-en-la-pagina.png" alt="Foto de perfil">
+        </div>
+        
+        <div class="datos-principales">
+          <div class="columna-datos">
+            <div class="campo-datos">
+              <label>Nombre completo</label>
+              <div class="campo-valor">{{empleado.nombre || 'N/A'}}</div>
+            </div>
+            
+            <div class="campo-datos">
+              <label>Nombre de usuario</label>
+              <div class="campo-valor">{{empleado.username || 'N/A'}}</div>
+            </div>
+            
+            <div class="campo-datos">
+              <label>Correo electrónico</label>
+              <div class="campo-valor">{{empleado.email || 'N/A'}}</div>
+            </div>
+            
+            <div class="campo-datos">
+              <label>Número de Identificación</label>
+              <div class="campo-valor">{{empleado.rut || 'N/A'}}</div>
+            </div>
+          </div>
+          
+          <div class="columna-datos">
+            <div class="campo-datos">
+              <label>Cargo</label>
+              <div class="campo-valor">{{empleado.cargo || 'N/A'}}</div>
+            </div>
+            
+            <div class="campo-datos">
+              <label>Profesión</label>
+              <div class="campo-valor">{{empleado.profesion || 'N/A'}}</div>
+            </div>
+            
+            <div class="campo-datos">
+              <label>Fecha de Nacimiento</label>
+              <div class="campo-valor">{{formatFecha(empleado.fechaNacimiento)}}</div>
+            </div>
+            
+            <div class="campo-datos">
+              <label>Salario Base</label>
+              <div class="campo-valor">{{formatMoneda(empleado.sueldoBase)}}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="informacion-adicional">
+        <div class="campo-datos">
+          <label>Empresa</label>
+          <div class="campo-valor">{{empresa?.nombre || 'N/A'}}</div>
+        </div>
+        
+        <div class="campo-datos">
+          <label>RUT de Empresa</label>
+          <div class="campo-valor">{{empresa?.rut || 'N/A'}}</div>
+        </div>
+        
+        <div class="campo-datos">
+          <label>Número de Cuenta Digital</label>
+          <div class="campo-valor">{{empleado.numeroCuentaDigital || 'N/A'}}</div>
+        </div>
+        
+        <div class="campo-datos">
+          <label>Fecha de Contratación</label>
+          <div class="campo-valor">{{formatFecha(empleado.fechaCreacion)}}</div>
+        </div>
+        
+        <div class="campo-datos">
+          <label>ID Interno</label>
+          <div class="campo-valor">{{empleado.id || 'N/A'}}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
