@@ -1,0 +1,381 @@
+.container-asistencia {
+  width: 100%;
+  padding: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: #333;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.titulo {
+  text-align: center;
+  color: #1f3a5f;
+  font-size: 1.8em;
+  margin-bottom: 20px;
+  font-weight: 600;
+}
+
+.nombre-empleado {
+  text-align: right;
+  padding: 10px;
+  font-size: 1.2em;
+  color: #1f3a5f;
+  font-weight: 500;
+  font-style: italic;
+}
+
+/* Buscador */
+.buscador {
+  background-color: #f3f0ff;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.input-group {
+  display: flex;
+  align-items: center;
+}
+
+.icon-search {
+  margin-right: 10px;
+  font-size: 18px;
+}
+
+.input-mes {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.btn-filtrar {
+  background-color: #3f51b5;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  margin-left: 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.3s;
+}
+
+.btn-filtrar:hover {
+  background-color: #303f9f;
+}
+
+/* Leyenda de estados */
+.leyenda-estados {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 20px;
+  gap: 30px;
+}
+
+.item-estado {
+  display: flex;
+  align-items: center;
+}
+
+.dot {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  margin-right: 8px;
+  display: inline-block;
+}
+
+.en-jornada {
+  background-color: #304ffe;
+}
+
+.asistio {
+  background-color: #00c853;
+}
+
+.ausente {
+  background-color: #ff1744;
+}
+
+/* Estado actual */
+.estado-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.estado-actual {
+  background-color: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.estado-actual h3 {
+  margin-top: 0;
+  color: #1f3a5f;
+  font-size: 1.2em;
+  margin-bottom: 15px;
+}
+
+.estado-info {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.texto-estado {
+  font-weight: 500;
+  font-size: 1.1em;
+}
+
+.hora-info {
+  margin-top: 10px;
+}
+
+.hora-info p {
+  margin: 8px 0;
+  font-size: 14px;
+}
+
+.valor {
+  font-weight: 500;
+}
+
+/* Gráfico */
+.grafico-container {
+  background-color: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  min-height: 220px;
+}
+
+.grafico-container h3 {
+  margin-top: 0;
+  color: #1f3a5f;
+  font-size: 1.2em;
+  margin-bottom: 15px;
+}
+
+.grafico-circular {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: conic-gradient(
+    #304ffe 0% calc(var(--en-jornada, 10) * 3.6deg),
+    #00c853 calc(var(--en-jornada, 10) * 3.6deg) calc((var(--en-jornada, 10) + var(--asistencia, 70)) * 3.6deg),
+    #ff1744 calc((var(--en-jornada, 10) + var(--asistencia, 70)) * 3.6deg) 360deg
+  );
+  border-radius: 50%;
+}
+
+.grafico-circular::before {
+  content: '';
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  background-color: white;
+  border-radius: 50%;
+}
+
+.porcentaje {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+}
+
+.valor-porcentaje {
+  font-size: 1.8em;
+  font-weight: bold;
+  color: #1f3a5f;
+}
+
+.texto-porcentaje {
+  font-size: 0.8em;
+  color: #666;
+}
+
+/* Registro entrada/salida simplificado */
+.registrar-container {
+  background-color: white;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.registrar-container h3 {
+  margin-top: 0;
+  color: #1f3a5f;
+  font-size: 1.2em;
+  margin-bottom: 15px;
+}
+
+.form-registro-simple {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-registrar {
+  background-color: #3f51b5;
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 1.1em;
+  transition: all 0.3s ease;
+  min-width: 150px;
+}
+
+.btn-entrada {
+  background-color: #304ffe;
+}
+
+.btn-entrada:hover {
+  background-color: #1e40ff;
+  transform: scale(1.03);
+}
+
+.btn-salida {
+  background-color: #00c853;
+}
+
+.btn-salida:hover {
+  background-color: #00a844;
+  transform: scale(1.03);
+}
+
+.btn-disabled {
+  background-color: #9e9e9e;
+  cursor: not-allowed;
+}
+
+.btn-registrar:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Historial */
+.historial {
+  background-color: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.historial h3 {
+  margin-top: 0;
+  color: #1f3a5f;
+  font-size: 1.2em;
+  margin-bottom: 15px;
+}
+
+.filtro-mes {
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+}
+
+.filtro-mes span {
+  font-size: 0.9em;
+  color: #666;
+  margin-right: 10px;
+}
+
+.tabla-container {
+  overflow-x: auto;
+}
+
+.tabla-asistencias {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tabla-asistencias th,
+.tabla-asistencias td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.tabla-asistencias th {
+  background-color: #f8f9fa;
+  color: #495057;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.tabla-asistencias tr:hover {
+  background-color: #f9f9f9;
+}
+
+.estado-cell {
+  display: flex;
+  align-items: center;
+}
+
+.no-registros {
+  text-align: center;
+  color: #757575;
+  font-style: italic;
+  padding: 20px 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .form-registro-simple {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .btn-registrar {
+    width: 100%;
+    max-width: 300px;
+    margin-top: 10px;
+  }
+  
+  .btn-filtrar {
+    width: 100%;
+    margin-left: 0;
+    margin-top: 10px;
+  }
+  
+  .input-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .leyenda-estados {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .tabla-asistencias {
+    font-size: 14px;
+  }
+  
+  .tabla-asistencias th,
+  .tabla-asistencias td {
+    padding: 8px 10px;
+  }
+}
+
+/* Variables para el gráfico */
+:root {
+  --en-jornada: 10;
+  --asistencia: 70;
+  --ausencias: 20;
+}

@@ -1,0 +1,88 @@
+<!-- dashboard/dashboard.component.html -->
+<div class="dashboard-container">
+  <!-- Incluir el sidebar -->
+  <app-sidebar [rolUsuario]="rolUsuario"></app-sidebar>
+  
+  <!-- Contenido principal -->
+  <div class="content-area">
+    <div class="container mt-5">
+      <div class="text-center mb-4">
+        <h2>Bienvenido, {{ nombreUsuario }}</h2>
+        <p><strong>Rol:</strong> {{ rolUsuario }}</p>
+      </div>
+    
+      <!-- Contenido para ADMIN -->
+      <div *ngIf="rolUsuario === 'ADMIN'" class="card p-4 mb-3 shadow border-primary">
+        <h4 class="text-primary">Panel de Administración</h4>
+        <div class="admin-dashboard">
+          <div class="stats-container">
+            <div class="stat-card">
+              <div class="stat-icon">
+                <i class="bi bi-people"></i>
+              </div>
+              <div class="stat-content">
+                <h5>Total de Empleados</h5>
+                <p class="stat-value">120</p>
+              </div>
+            </div>
+            
+            <div class="stat-card">
+              <div class="stat-icon">
+                <i class="bi bi-calendar-check"></i>
+              </div>
+              <div class="stat-content">
+                <h5>Asistencia de Hoy</h5>
+                <p class="stat-value">85%</p>
+              </div>
+            </div>
+            
+            <div class="stat-card">
+              <div class="stat-icon">
+                <i class="bi bi-file-text"></i>
+              </div>
+              <div class="stat-content">
+                <h5>Liquidaciones Pendientes</h5>
+                <p class="stat-value">10</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="quick-access mt-4">
+            <h5>Acceso Rápido</h5>
+            <ul>
+              <li><a [routerLink]="['/registro']">Gestión de empleados</a></li>
+              <li><a [routerLink]="['/reportes']">Reportes de empresa</a></li>
+              <li><a [routerLink]="['/configuracion']">Configuraciones del sistema</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    
+      <!-- Contenido para EMPLEADO -->
+      <div *ngIf="rolUsuario === 'EMPLEADO'" class="card p-4 shadow border-success">
+        <h4 class="text-success">Panel de Empleado</h4>
+        <div class="employee-dashboard">
+          <div class="quick-access mt-3">
+            <ul>
+              <li><a [routerLink]="['/pagos']">Ver recibos de sueldo</a></li>
+              <li><a [routerLink]="['/perfil']">Actualizar perfil</a></li>
+              <li><a [routerLink]="['/vacaciones']">Solicitar vacaciones</a></li>
+            </ul>
+          </div>
+          
+          <div class="recent-activity mt-4">
+            <h5>Actividad Reciente</h5>
+            <div class="activity-item">
+              <div class="activity-date">23/03/2024</div>
+              <div class="activity-desc">Pago de nómina procesado</div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-date">15/03/2024</div>
+              <div class="activity-desc">Solicitud de permiso aprobada</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
