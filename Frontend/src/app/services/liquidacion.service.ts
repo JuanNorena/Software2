@@ -185,10 +185,13 @@ export class LiquidacionService {
    * @returns Observable con los descuentos de la liquidación
    */
   obtenerDescuentosPorLiquidacion(liquidacionId: string): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiUrl}/descuentos/liquidacion/${liquidacionId}`).pipe(
-      catchError(this.handleError<any[]>('obtenerDescuentosPorLiquidacion', []))
-    );
-  }
+  return this.http.get<any[]>(`${this.apiUrl}/descuentos/liquidacion/${liquidacionId}`).pipe(
+    catchError(error => {
+      console.error('Error al obtener descuentos:', error);
+      return of([]); // Devolver array vacío en caso de error para no interrumpir el flujo
+    })
+  );
+}
 
   /**
    * Obtiene el registro de asistencia asociado a una liquidación
@@ -203,8 +206,8 @@ export class LiquidacionService {
 
   /**
    * Descarga el PDF de una liquidación
-   * @param liquidacionId ID de la liquidación
-   * @returns Observable con el blob del PDF
+   * @param {string} liquidacionId - ID de la liquidación
+   * @returns {Observable<Blob>} Observable que contiene el blob del PDF
    */
   descargarLiquidacionPDF(liquidacionId: string): Observable<Blob> {
     return this.http.get(`${this.apiUrl}/liquidaciones-sueldo/${liquidacionId}/pdf`, {

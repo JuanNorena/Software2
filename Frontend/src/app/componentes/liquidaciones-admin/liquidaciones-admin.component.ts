@@ -60,6 +60,13 @@ export class LiquidacionesAdminComponent implements OnInit {
   // Sistema de tabs para el modal de nómina
   tabActiva: string = 'liquidaciones';
   
+  // Sistema de tabs para el modal de liquidación
+  tabActivaLiquidacion: string = 'formulario';
+  
+  // Datos para historial de liquidaciones del empleado
+  liquidacionesEmpleado: any[] = [];
+  cargandoLiquidaciones: boolean = false;
+  
   // Datos para pago de liquidación
   liquidacionesPendientesPago: any[] = [];
   liquidacionSeleccionadaId: string = '';
@@ -179,8 +186,39 @@ export class LiquidacionesAdminComponent implements OnInit {
     this.salarioMensual = empleado.sueldoBase || null;
     this.editarSalario = !empleado.sueldoBase;
     this.mostrarModalLiquidacion = true;
+    this.tabActivaLiquidacion = 'formulario'; // Iniciar en la pestaña del formulario
     this.error = null;
     this.mensaje = null;
+    this.liquidacionGenerada = null; // Reiniciar la liquidación generada
+  }
+
+  /**
+   * Cambia la tab activa en el modal de liquidación
+   */
+  cambiarTabLiquidacion(tab: string): void {
+    this.tabActivaLiquidacion = tab;
+  }
+
+  /**
+   * Carga las liquidaciones del empleado seleccionado
+   */
+  cargarLiquidacionesEmpleado(): void {
+    if (!this.empleadoSeleccionado || !this.empleadoSeleccionado._id) return;
+    
+    this.cargandoLiquidaciones = true;
+    this.liquidacionesEmpleado = [];
+    
+    this.liquidacionService.obtenerLiquidacionesPorEmpleado(this.empleadoSeleccionado._id).subscribe({
+      next: (liquidaciones) => {
+        this.liquidacionesEmpleado = liquidaciones;
+        this.cargandoLiquidaciones = false;
+      },
+      error: (err) => {
+        console.error('Error al cargar liquidaciones del empleado:', err);
+        this.mostrarError('No se pudieron cargar las liquidaciones del empleado. Por favor, intente nuevamente.');
+        this.cargandoLiquidaciones = false;
+      }
+    });
   }
 
   /**
@@ -262,7 +300,12 @@ export class LiquidacionesAdminComponent implements OnInit {
           this.procesandoCambioEstado = false;
           this.mostrarExito('Liquidación aprobada correctamente');
           this.cerrarModalCambioEstado();
-          this.cargarLiquidacionesPendientesPago(this.empleadoSeleccionado._id);
+          
+          // Actualizar las listas de liquidaciones
+          if (this.empleadoSeleccionado) {
+            this.cargarLiquidacionesPendientesPago(this.empleadoSeleccionado._id);
+            this.cargarLiquidacionesEmpleado();
+          }
         },
         error: (err) => {
           console.error('Error al aprobar liquidación:', err);
@@ -285,7 +328,12 @@ export class LiquidacionesAdminComponent implements OnInit {
           this.procesandoCambioEstado = false;
           this.mostrarExito('Liquidación rechazada correctamente');
           this.cerrarModalCambioEstado();
-          this.cargarLiquidacionesPendientesPago(this.empleadoSeleccionado._id);
+          
+          // Actualizar las listas de liquidaciones
+          if (this.empleadoSeleccionado) {
+            this.cargarLiquidacionesPendientesPago(this.empleadoSeleccionado._id);
+            this.cargarLiquidacionesEmpleado();
+          }
         },
         error: (err) => {
           console.error('Error al rechazar liquidación:', err);
@@ -317,6 +365,8 @@ export class LiquidacionesAdminComponent implements OnInit {
     this.mostrarModalLiquidacion = false;
     this.empleadoSeleccionado = null;
     this.liquidacionGenerada = null;
+    this.liquidacionesEmpleado = [];
+    this.tabActivaLiquidacion = 'formulario';
   }
 
   /**
@@ -386,13 +436,26 @@ export class LiquidacionesAdminComponent implements OnInit {
         this.mostrarExito('Liquidación rechazada correctamente');
         
         // Actualizar la lista de liquidaciones
-        const index = this.liquidacionesPendientesPago.findIndex(
-          liq => liq._id === this.liquidacionParaRechazar._id
-        );
+        if (this.liquidacionesPendientesPago.length > 0) {
+          const index = this.liquidacionesPendientesPago.findIndex(
+            liq => liq._id === this.liquidacionParaRechazar._id
+          );
+          
+          if (index !== -1) {
+            // Actualizar el estado en vez de eliminarla
+            this.liquidacionesPendientesPago[index].estado = 'rechazado';
+          }
+        }
         
-        if (index !== -1) {
-          // Eliminar de la lista
-          this.liquidacionesPendientesPago.splice(index, 1);
+        // También actualizar en la lista de liquidaciones del empleado si está disponible
+        if (this.liquidacionesEmpleado.length > 0) {
+          const index = this.liquidacionesEmpleado.findIndex(
+            liq => liq._id === this.liquidacionParaRechazar._id
+          );
+          
+          if (index !== -1) {
+            this.liquidacionesEmpleado[index].estado = 'rechazado';
+          }
         }
         
         // Cerrar modal
@@ -431,6 +494,11 @@ export class LiquidacionesAdminComponent implements OnInit {
         
         // Guardar la liquidación generada para poder aprobarla
         this.liquidacionGenerada = resultado.liquidacion;
+        
+        // Actualizar la lista de liquidaciones del empleado si estamos en esa pestaña
+        if (this.tabActivaLiquidacion === 'historial') {
+          this.cargarLiquidacionesEmpleado();
+        }
       },
       error: (err) => {
         console.error('Error al generar liquidación:', err);
@@ -732,6 +800,14 @@ export class LiquidacionesAdminComponent implements OnInit {
           if (liquidacion) {
             liquidacion.estado = 'aprobado';
             liquidacion.seleccionada = true; // Automáticamente seleccionarla para pago
+          }
+        }
+        
+        // Actualizar el estado de la liquidación en la lista de liquidaciones del empleado
+        if (this.liquidacionesEmpleado.length > 0) {
+          const liquidacion = this.liquidacionesEmpleado.find(liq => liq._id === liquidacionId);
+          if (liquidacion) {
+            liquidacion.estado = 'aprobado';
           }
         }
       },

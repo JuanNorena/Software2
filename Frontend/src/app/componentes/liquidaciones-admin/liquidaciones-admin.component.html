@@ -1,3 +1,4 @@
+<!-- Modificado el modal de liquidación para añadir un sistema de tabs -->
 <div class="liquidaciones-container">
   <h2 class="titulo">Liquidaciónes</h2>
   
@@ -79,88 +80,174 @@
         <span class="close-modal" (click)="cerrarModalLiquidacion()">&times;</span>
       </div>
       <div class="modal-body">
-        <div class="form-container">
-          <div class="form-row">
-            <div class="form-group">
-              <label for="fechaInicio">Fecha De Inicio</label>
-              <input 
-                type="date" 
-                id="fechaInicio" 
-                [(ngModel)]="fechaInicio" 
-                class="form-control"
-              >
-            </div>
-            
-            <div class="form-group">
-              <label for="fechaFin">Fecha De Final Del Periodo</label>
-              <input 
-                type="date" 
-                id="fechaFin" 
-                [(ngModel)]="fechaFin" 
-                class="form-control"
-              >
-            </div>
+        <!-- Aquí añadimos el sistema de tabs -->
+        <div class="tabs-container">
+          <div class="tab-header">
+            <button 
+              class="tab-button" 
+              [class.active]="tabActivaLiquidacion === 'formulario'"
+              (click)="cambiarTabLiquidacion('formulario')"
+            >
+              Generar Liquidación
+            </button>
+            <button 
+              class="tab-button" 
+              [class.active]="tabActivaLiquidacion === 'historial'"
+              (click)="cargarLiquidacionesEmpleado(); cambiarTabLiquidacion('historial')"
+            >
+              Historial de Liquidaciones
+            </button>
           </div>
           
-          <div class="form-row">
-            <div class="form-group">
-              <label for="salarioMensual">Ingrese Su Salario Mensual</label>
-              <input 
-                type="number" 
-                id="salarioMensual" 
-                [(ngModel)]="salarioMensual" 
-                class="form-control"
-                placeholder="$0"
-                [disabled]="!editarSalario"
-              >
-            </div>
-            
-            <div class="form-group">
-              <label>Tiene Derecho A Un Auxilio De Transporte</label>
-              <div class="checkbox-container">
-                <input 
-                  type="checkbox" 
-                  id="auxilioTransporte" 
-                  [(ngModel)]="auxilioTransporte" 
-                  class="form-check"
+          <!-- Tab de formulario -->
+          <div class="tab-content" *ngIf="tabActivaLiquidacion === 'formulario'">
+            <div class="form-container">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="fechaInicio">Fecha De Inicio</label>
+                  <input 
+                    type="date" 
+                    id="fechaInicio" 
+                    [(ngModel)]="fechaInicio" 
+                    class="form-control"
+                  >
+                </div>
+                
+                <div class="form-group">
+                  <label for="fechaFin">Fecha De Final Del Periodo</label>
+                  <input 
+                    type="date" 
+                    id="fechaFin" 
+                    [(ngModel)]="fechaFin" 
+                    class="form-control"
+                  >
+                </div>
+              </div>
+              
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="salarioMensual">Ingrese Su Salario Mensual</label>
+                  <input 
+                    type="number" 
+                    id="salarioMensual" 
+                    [(ngModel)]="salarioMensual" 
+                    class="form-control"
+                    placeholder="$0"
+                    [disabled]="!editarSalario"
+                  >
+                </div>
+                
+                <div class="form-group">
+                  <label>Tiene Derecho A Un Auxilio De Transporte</label>
+                  <div class="checkbox-container">
+                    <input 
+                      type="checkbox" 
+                      id="auxilioTransporte" 
+                      [(ngModel)]="auxilioTransporte" 
+                      class="form-check"
+                    >
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Mostrar estado de liquidación si se ha generado -->
+              <div class="estado-liquidacion" *ngIf="liquidacionGenerada">
+                <p>Estado de la liquidación: <span class="estado {{liquidacionGenerada.estado}}">{{liquidacionGenerada.estado | titlecase}}</span></p>
+              </div>
+              
+              <div class="form-actions">
+                <button 
+                  class="btn-liquidar-modal" 
+                  (click)="generarLiquidacionIndividual()" 
+                  [disabled]="procesando"
                 >
+                  <span *ngIf="!procesando">Liquidar</span>
+                  <span *ngIf="procesando" class="spinner-text">
+                    <span class="spinner-border spinner-border-sm"></span>
+                    Procesando...
+                  </span>
+                </button>
+                
+                <!-- Botón de Aprobar sólo visible si la liquidación fue generada y está pendiente -->
+                <button 
+                  class="btn-aprobar" 
+                  *ngIf="liquidacionGenerada && liquidacionGenerada.estado === 'pendiente'"
+                  (click)="aprobarLiquidacion(liquidacionGenerada._id)" 
+                  [disabled]="procesandoAprobacion"
+                >
+                  <span *ngIf="!procesandoAprobacion">Aprobar</span>
+                  <span *ngIf="procesandoAprobacion" class="spinner-text">
+                    <span class="spinner-border spinner-border-sm"></span>
+                    Aprobando...
+                  </span>
+                </button>
+                
+                <button class="btn-cancelar" (click)="cerrarModalLiquidacion()">Cancelar</button>
               </div>
             </div>
           </div>
           
-          <!-- Mostrar estado de liquidación si se ha generado -->
-          <div class="estado-liquidacion" *ngIf="liquidacionGenerada">
-            <p>Estado de la liquidación: <span class="estado {{liquidacionGenerada.estado}}">{{liquidacionGenerada.estado | titlecase}}</span></p>
-          </div>
-          
-          <div class="form-actions">
-            <button 
-              class="btn-liquidar-modal" 
-              (click)="generarLiquidacionIndividual()" 
-              [disabled]="procesando"
-            >
-              <span *ngIf="!procesando">Liquidar</span>
-              <span *ngIf="procesando" class="spinner-text">
-                <span class="spinner-border spinner-border-sm"></span>
-                Procesando...
-              </span>
-            </button>
+          <!-- Tab de historial de liquidaciones -->
+          <div class="tab-content" *ngIf="tabActivaLiquidacion === 'historial'">
+            <h4>Historial de Liquidaciones</h4>
             
-            <!-- Botón de Aprobar sólo visible si la liquidación fue generada y está pendiente -->
-            <button 
-              class="btn-aprobar" 
-              *ngIf="liquidacionGenerada && liquidacionGenerada.estado === 'pendiente'"
-              (click)="aprobarLiquidacion(liquidacionGenerada._id)" 
-              [disabled]="procesandoAprobacion"
-            >
-              <span *ngIf="!procesandoAprobacion">Aprobar</span>
-              <span *ngIf="procesandoAprobacion" class="spinner-text">
-                <span class="spinner-border spinner-border-sm"></span>
-                Aprobando...
-              </span>
-            </button>
+            <div *ngIf="cargandoLiquidaciones" class="text-center">
+              <div class="spinner-border"></div>
+              <p>Cargando liquidaciones...</p>
+            </div>
             
-            <button class="btn-cancelar" (click)="cerrarModalLiquidacion()">Cancelar</button>
+            <div *ngIf="!cargandoLiquidaciones && (!liquidacionesEmpleado || liquidacionesEmpleado.length === 0)" class="sin-liquidaciones">
+              <p>No hay liquidaciones registradas para este empleado.</p>
+            </div>
+            
+            <div *ngIf="!cargandoLiquidaciones && liquidacionesEmpleado && liquidacionesEmpleado.length > 0" class="tabla-container">
+              <table class="tabla-liquidaciones">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Sueldo Bruto</th>
+                    <th>Descuentos</th>
+                    <th>Sueldo Neto</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let liquidacion of liquidacionesEmpleado">
+                    <td>{{liquidacion.fecha | date: 'dd/MM/yyyy'}}</td>
+                    <td>{{formatoMoneda(liquidacion.sueldoBruto)}}</td>
+                    <td>{{formatoMoneda(liquidacion.totalDescuentos)}}</td>
+                    <td>{{formatoMoneda(liquidacion.sueldoNeto)}}</td>
+                    <td><span class="estado {{liquidacion.estado}}">{{liquidacion.estado | titlecase}}</span></td>
+                    <td>
+                      <!-- Botones para cambiar estado dependiendo del estado actual -->
+                      <button 
+                        *ngIf="liquidacion.estado === 'pendiente'"
+                        class="btn-mini btn-aprobar" 
+                        (click)="aprobarLiquidacion(liquidacion._id)"
+                        [disabled]="procesandoAprobacion"
+                      >
+                        Aprobar
+                      </button>
+                      
+                      <button 
+                        *ngIf="liquidacion.estado === 'pendiente'"
+                        class="btn-mini btn-rechazar" 
+                        (click)="abrirModalRechazo(liquidacion)"
+                      >
+                        Rechazar
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            
+            <div class="form-actions">
+              <button class="btn-volver" (click)="cambiarTabLiquidacion('formulario')">
+                Volver al Formulario
+              </button>
+            </div>
           </div>
         </div>
       </div>

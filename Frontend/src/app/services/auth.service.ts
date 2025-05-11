@@ -1,9 +1,10 @@
 import { Injectable, PLATFORM_ID, Inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, BehaviorSubject, of } from 'rxjs';
+import { Observable, BehaviorSubject, of, throwError } from 'rxjs';
 import { tap, map, catchError } from 'rxjs/operators';
 import { isPlatformBrowser } from '@angular/common';
 import { environment } from '../../environments/environment';
+import { Router } from '@angular/router';
 
 @Injectable({
   providedIn: 'root'
@@ -15,7 +16,8 @@ export class AuthService {
   
   constructor(
     private http: HttpClient,
-    @Inject(PLATFORM_ID) platformId: Object
+    @Inject(PLATFORM_ID) platformId: Object,
+    private router: Router
   ) {
     this.isBrowser = isPlatformBrowser(platformId);
     const token = this.isBrowser ? localStorage.getItem('token') : null;
@@ -42,18 +44,35 @@ export class AuthService {
       );
   }
 
-  /**
+   /**
    * Cierra la sesión del usuario actual
    */
   logout(): Observable<any> {
+    // Preparamos un observable que siempre limpiará los datos locales
+    const cleanupFn = () => {
+      if (this.isBrowser) {
+        console.log('Limpiando datos de sesión...');
+        localStorage.removeItem('token');
+        localStorage.removeItem('usuario');
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('usuario');
+      }
+      this.tokenSubject.next(null);
+      this.router.navigate(['/login'], { replaceUrl: true });
+    };
+
+    // Intentamos hacer logout en el servidor
     return this.http.post<any>(`${this.apiUrl}/auth/logout`, {})
       .pipe(
         tap(() => {
-          if (this.isBrowser) {
-            localStorage.removeItem('token');
-            localStorage.removeItem('usuario');
-          }
-          this.tokenSubject.next(null);
+          console.log('Logout exitoso en el servidor');
+          cleanupFn();
+        }),
+        catchError(error => {
+          console.error('Error en logout:', error);
+          // Aún con error, limpiamos localmente
+          cleanupFn();
+          return throwError(() => error);
         })
       );
   }

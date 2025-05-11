@@ -176,9 +176,13 @@ class PdfService {
     }
     
     // Pie de página
-    const pageCount = doc.bufferedPageRange().count;
+    const pageRange = doc.bufferedPageRange();
+    const pageCount = pageRange.count;
+    const startPage = pageRange.start; // Normalmente es 0, pero usamos esto para estar seguros
+
     for (let i = 0; i < pageCount; i++) {
-      doc.switchToPage(i);
+      const pageIndex = startPage + i;
+      doc.switchToPage(pageIndex);
       
       // Agregar número de página al pie
       doc.fontSize(10).text(

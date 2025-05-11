@@ -6,9 +6,12 @@
 
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const LiquidacionSueldo = require('../Model/LiquidacionSueldo');
 const Empleado = require('../Model/Empleado');
 const Descuento = require('../Model/Descuento');
+const PagoSueldo = require('../Model/PagoSueldo');
+const RegistroAsistencia = require('../Model/RegistroAsistencia'); // Asegúrate de que la ruta sea correcta
 const LiquidacionService = require('../service/LiquidacionService');
 const BaseController = require('./BaseController');
 const { authenticateUser, authorizeRoles } = require('../middleware/authMiddleware');
@@ -33,6 +36,7 @@ router.get('/', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async 
     BaseController.handleError(res, error);
   }
 }));
+
 /**
  * @description Procesa el pago de nómina (múltiples liquidaciones)
  * @route POST /api/liquidaciones-sueldo/pagar-nomina
@@ -50,114 +54,109 @@ router.post('/pagar-nomina', authenticateUser, authorizeRoles(['ADMIN']), asyncH
   try {
     // Validación de campos obligatorios
     if (!liquidacionesIds || !Array.isArray(liquidacionesIds) || liquidacionesIds.length === 0) {
-      return BaseController.handleBadRequest(res, 'Debe proporcionar un array con al menos una liquidación para procesar');
+      return res.status(400).json({
+        mensaje: 'Debe proporcionar un array con al menos una liquidación para procesar'
+      });
     }
     
     if (!metodoPago || !banco) {
-      return BaseController.handleBadRequest(res, 'Debe proporcionar método de pago y banco');
+      return res.status(400).json({
+        mensaje: 'Debe proporcionar método de pago y banco'
+      });
     }
     
     // Validar que el método de pago sea válido
     if (!['cheque', 'deposito'].includes(metodoPago)) {
-      return BaseController.handleBadRequest(res, 'El método de pago debe ser "cheque" o "deposito"');
+      return res.status(400).json({
+        mensaje: 'El método de pago debe ser "cheque" o "deposito"'
+      });
     }
     
-    // Iniciar una sesión de transacción
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    // Variables para almacenar resultados y errores
+    const resultados = [];
+    const errores = [];
     
-    try {
-      const resultados = [];
-      const errores = [];
-      
-      // Procesar cada liquidación en la transacción
-      for (const liquidacionId of liquidacionesIds) {
-        try {
-          // Verificar que la liquidación exista
-          const liquidacion = await LiquidacionSueldo.findById(liquidacionId);
-          if (!liquidacion) {
-            errores.push(`La liquidación con ID ${liquidacionId} no existe`);
-            continue;
-          }
-          
-          // Verificar que la liquidación esté en estado adecuado para pago
-          if (liquidacion.estado !== 'aprobado') {
-            errores.push(`La liquidación con ID ${liquidacionId} no está en estado aprobado`);
-            continue;
-          }
-          
-          // Crear objeto de pago de sueldo
-          const pagoSueldo = new PagoSueldo({
-            liquidacionSueldo: liquidacionId,
-            banco: banco,
-            fecha: fechaPago || new Date(),
-            metodoPago: metodoPago,
-            monto: liquidacion.sueldoNeto
-          });
-          
-          // Guardar el pago dentro de la transacción
-          const nuevoPagoSueldo = await pagoSueldo.save({ session });
-          
-          // Actualizar el estado de la liquidación a 'pagado'
-          liquidacion.estado = 'pagado';
-          await liquidacion.save({ session });
-          
-          // Buscar o crear empleado asociado para incluir información en el resultado
-          const empleado = await Empleado.findById(liquidacion.empleado).select('nombre rut');
-          
-          resultados.push({
-            liquidacionId,
-            pagoId: nuevoPagoSueldo._id,
-            empleado: empleado ? {
-              id: empleado._id,
-              nombre: empleado.nombre,
-              rut: empleado.rut
-            } : { id: liquidacion.empleado },
-            monto: nuevoPagoSueldo.monto,
-            fecha: nuevoPagoSueldo.fecha
-          });
-        } catch (error) {
-          errores.push(`Error al procesar la liquidación ${liquidacionId}: ${error.message}`);
+    // Procesar cada liquidación (sin transacciones)
+    for (const liquidacionId of liquidacionesIds) {
+      try {
+        // Verificar que la liquidación exista
+        const liquidacion = await LiquidacionSueldo.findById(liquidacionId);
+        if (!liquidacion) {
+          errores.push(`La liquidación con ID ${liquidacionId} no existe`);
+          continue;
+        }
+        
+        // Verificar que la liquidación esté en estado adecuado para pago
+        if (liquidacion.estado !== 'aprobado') {
+          errores.push(`La liquidación con ID ${liquidacionId} no está en estado aprobado`);
+          continue;
+        }
+        
+        // Crear objeto de pago de sueldo
+        const pagoSueldo = new PagoSueldo({
+          liquidacionSueldo: liquidacionId,
+          banco: banco,
+          fecha: fechaPago || new Date(),
+          metodoPago: metodoPago,
+          monto: liquidacion.sueldoNeto
+        });
+        
+        // Guardar el pago
+        const nuevoPagoSueldo = await pagoSueldo.save();
+        
+        // Actualizar el estado de la liquidación a 'pagado'
+        liquidacion.estado = 'pagado';
+        await liquidacion.save();
+        
+        // Buscar el empleado asociado para incluir información en el resultado
+        const empleado = await Empleado.findById(liquidacion.empleado).select('nombre rut');
+        
+        resultados.push({
+          liquidacionId,
+          pagoId: nuevoPagoSueldo._id,
+          empleado: empleado ? {
+            id: empleado._id,
+            nombre: empleado.nombre,
+            rut: empleado.rut
+          } : { id: liquidacion.empleado },
+          monto: nuevoPagoSueldo.monto,
+          fecha: nuevoPagoSueldo.fecha
+        });
+      } catch (error) {
+        errores.push(`Error al procesar la liquidación ${liquidacionId}: ${error.message}`);
+      }
+    }
+    
+    // Si no se procesó ninguna liquidación
+    if (resultados.length === 0) {
+      return res.status(400).json({
+        mensaje: 'No se pudo procesar ninguna liquidación',
+        errores: errores
+      });
+    }
+    
+    // Calcular el monto total procesado
+    const montoTotal = resultados.reduce((total, r) => total + r.monto, 0);
+    
+    // Enviar respuesta exitosa
+    return res.status(200).json({
+      mensaje: `Se han procesado ${resultados.length} liquidaciones correctamente por un total de ${montoTotal}`,
+      datos: {
+        resultados, 
+        errores: errores.length > 0 ? errores : null,
+        resumen: {
+          liquidacionesProcesadas: resultados.length,
+          liquidacionesConError: errores.length,
+          montoTotal
         }
       }
-      
-      // Si no se procesó ninguna liquidación, abortar la transacción
-      if (resultados.length === 0) {
-        await session.abortTransaction();
-        return BaseController.handleBadRequest(res, 'No se pudo procesar ninguna liquidación', { errores });
-      }
-      
-      // Confirmar la transacción
-      await session.commitTransaction();
-      
-      // Calcular el monto total procesado
-      const montoTotal = resultados.reduce((total, r) => total + r.monto, 0);
-      
-      BaseController.sendResponse(
-        res, 
-        { 
-          resultados, 
-          errores: errores.length > 0 ? errores : null,
-          resumen: {
-            liquidacionesProcesadas: resultados.length,
-            liquidacionesConError: errores.length,
-            montoTotal
-          }
-        },
-        `Se han procesado ${resultados.length} liquidaciones correctamente por un total de ${montoTotal}`,
-        200
-      );
-    } catch (error) {
-      // Si hay un error general, abortar la transacción
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      // Finalizar la sesión
-      session.endSession();
-    }
+    });
   } catch (error) {
     console.error('Error al procesar pago de nómina:', error);
-    BaseController.handleError(res, error);
+    return res.status(500).json({
+      mensaje: 'Error al procesar pago de nómina',
+      error: error.message
+    });
   }
 }));
 
@@ -695,7 +694,7 @@ router.delete('/:id', asyncHandler(async (req, res) => {
       return res.status(404).json({ message: 'Liquidación de sueldo no encontrada' });
     }
 
-    // Eliminar los descuentos asociados
+    // Eliminar los descuentos asociados sin transacciones
     await Descuento.deleteMany({ liquidacionSueldo: req.params.id });
 
     // Eliminar la liquidación
@@ -745,65 +744,131 @@ router.post('/', authenticateUser, authorizeRoles(['ADMIN']), asyncHandler(async
       return res.status(404).json({ message: 'El empleado especificado no existe' });
     }
 
-    // Iniciar una sesión de transacción
-    const session = await mongoose.startSession();
-    session.startTransaction();
-    
-    try {
-      const liquidacion = new LiquidacionSueldo({
-        empleado: req.body.empleado,
-        estado: req.body.estado || 'emitido',
-        fecha: req.body.fecha,
-        sueldoBruto: req.body.sueldoBruto,
-        sueldoNeto: req.body.sueldoNeto,
-        totalDescuentos: req.body.totalDescuentos || 0
-      });
+    // Crear la liquidación sin usar transacciones
+    const liquidacion = new LiquidacionSueldo({
+      empleado: req.body.empleado,
+      estado: req.body.estado || 'pendiente', // Usar 'pendiente' como estado por defecto según el esquema
+      fecha: req.body.fecha,
+      sueldoBruto: req.body.sueldoBruto,
+      sueldoNeto: req.body.sueldoNeto,
+      totalDescuentos: req.body.totalDescuentos || 0
+    });
 
-      const nuevaLiquidacion = await liquidacion.save({ session });
+    const nuevaLiquidacion = await liquidacion.save();
 
-      // Si hay descuentos, crearlos y asociarlos a la liquidación
-      if (req.body.descuentos && Array.isArray(req.body.descuentos)) {
-        const descuentosPromises = req.body.descuentos.map(descuento => {
-          // Validar los campos de cada descuento
-          if (!descuento.concepto || isNaN(parseFloat(descuento.valor))) {
-            throw new Error('Los descuentos deben tener concepto y valor válido');
-          }
-          
-          const nuevoDescuento = new Descuento({
-            concepto: descuento.concepto,
-            valor: descuento.valor,
-            liquidacionSueldo: nuevaLiquidacion._id
-          });
-          return nuevoDescuento.save({ session });
+    // Si hay descuentos, crearlos y asociarlos a la liquidación
+    if (req.body.descuentos && Array.isArray(req.body.descuentos)) {
+      for (const descuento of req.body.descuentos) {
+        // Validar los campos de cada descuento
+        if (!descuento.concepto || isNaN(parseFloat(descuento.valor))) {
+          throw new Error('Los descuentos deben tener concepto y valor válido');
+        }
+        
+        const nuevoDescuento = new Descuento({
+          concepto: descuento.concepto,
+          valor: descuento.valor,
+          liquidacionSueldo: nuevaLiquidacion._id
         });
-
-        await Promise.all(descuentosPromises);
+        await nuevoDescuento.save();
       }
-      
-      // Confirmar la transacción
-      await session.commitTransaction();
-
-      // Obtener la liquidación con los descuentos asociados
-      const liquidacionCompleta = await LiquidacionSueldo.findById(nuevaLiquidacion._id)
-        .populate('empleado', 'nombre rut cargo sueldoBase')
-        .populate('descuentos');
-
-      res.status(201).json({
-        message: 'Liquidación creada exitosamente',
-        liquidacion: liquidacionCompleta
-      });
-    } catch (error) {
-      // Si hay un error, abortar la transacción
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      // Finalizar la sesión
-      session.endSession();
     }
+
+    // Obtener la liquidación con los descuentos asociados
+    const liquidacionCompleta = await LiquidacionSueldo.findById(nuevaLiquidacion._id)
+      .populate('empleado', 'nombre rut cargo sueldoBase')
+      .populate('descuentos');
+
+    res.status(201).json({
+      message: 'Liquidación creada exitosamente',
+      liquidacion: liquidacionCompleta
+    });
   } catch (error) {
     console.error('Error al crear liquidación:', error);
     res.status(400).json({ message: error.message });
   }
 }));
 
+/**
+ * @description Descarga el PDF de una liquidación de sueldo
+ * @route GET /api/liquidaciones-sueldo/:id/pdf
+ * @access Private
+ * @param {string} req.params.id - ID de la liquidación
+ * @returns {Buffer} PDF de la liquidación
+ */
+router.get('/:id/pdf', authenticateUser, asyncHandler(async (req, res) => {
+  try {
+    // Verificar que el ID sea válido
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ mensaje: 'ID de liquidación no válido' });
+    }
+    
+    // Buscar la liquidación
+    const liquidacion = await LiquidacionSueldo.findById(req.params.id)
+      .populate('empleado', 'nombre rut cargo sueldoBase empresa fechaIngreso')
+      .populate({
+        path: 'empleado',
+        populate: { path: 'empresa', select: 'nombre rut direccion' }
+      });
+    
+    if (!liquidacion) {
+      return res.status(404).json({ mensaje: 'Liquidación no encontrada' });
+    }
+    
+    // Verificar permisos - solo el propio empleado o un admin puede ver su liquidación
+    const esAdmin = req.user.roles && req.user.roles.includes('ADMIN');
+    const esEmpleado = req.user.empleadoId && liquidacion.empleado._id.toString() === req.user.empleadoId.toString();
+    
+    if (!esAdmin && !esEmpleado) {
+      return res.status(403).json({ mensaje: 'No tiene permiso para acceder a esta liquidación' });
+    }
+    
+    // Obtener descuentos
+    const descuentos = await Descuento.find({ liquidacionSueldo: liquidacion._id });
+    
+    // Obtener registros de asistencia del mes de la liquidación
+    const fechaLiquidacion = new Date(liquidacion.fecha);
+    const primerDiaMes = new Date(fechaLiquidacion.getFullYear(), fechaLiquidacion.getMonth(), 1);
+    const ultimoDiaMes = new Date(fechaLiquidacion.getFullYear(), fechaLiquidacion.getMonth() + 1, 0);
+    
+    const asistencias = await RegistroAsistencia.find({
+      empleado: liquidacion.empleado._id,
+      fecha: {
+        $gte: primerDiaMes,
+        $lte: ultimoDiaMes
+      }
+    }).sort({ fecha: 1 });
+    
+    // Generar el PDF
+    const PdfService = require('../service/PdfService');
+    const pdfFilename = await PdfService.generarLiquidacionPdf(
+      liquidacion, 
+      liquidacion.empleado, 
+      descuentos,
+      asistencias
+    );
+    
+    // Enviar el archivo
+    const pdfPath = PdfService.getFilePath(pdfFilename);
+    
+    // Configurar nombre de archivo para descarga
+    res.setHeader('Content-Disposition', `attachment; filename="liquidacion_${req.params.id}.pdf"`);
+    res.setHeader('Content-Type', 'application/pdf');
+    
+    // Enviar el archivo
+    res.sendFile(pdfPath, (err) => {
+      if (err) {
+        console.error('Error al enviar el archivo PDF:', err);
+        res.status(500).send('Error al generar el PDF');
+      }
+      
+      // Eliminar el archivo temporal después de enviarlo
+      PdfService.deleteFile(pdfFilename).catch(err => {
+        console.error('Error al eliminar el archivo PDF temporal:', err);
+      });
+    });
+  } catch (error) {
+    console.error('Error al generar PDF de liquidación:', error);
+    res.status(500).json({ mensaje: 'Error al generar el PDF', error: error.message });
+  }
+}));
 module.exports = router;

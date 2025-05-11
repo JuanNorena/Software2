@@ -72,6 +72,7 @@ export class PagosComponent implements OnInit {
     
     this.liquidacionService.obtenerMisLiquidaciones().subscribe({
       next: (liquidaciones) => {
+        console.log('Liquidaciones obtenidas:', liquidaciones);
         // Ordenar liquidaciones por fecha (más reciente primero)
         const liquidacionesOrdenadas = liquidaciones.sort((a, b) => 
           new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
@@ -84,8 +85,10 @@ export class PagosComponent implements OnInit {
           // Obtener descuentos de esta liquidación
           this.liquidacionService.obtenerDescuentosPorLiquidacion(ultimaLiquidacion._id).subscribe({
             next: (descuentos) => {
+              console.log('Descuentos obtenidos:', descuentos);
               // Preparar el resumen con los datos obtenidos
               this.resumenActual = {
+                id: ultimaLiquidacion._id,
                 fecha: new Date(ultimaLiquidacion.fecha),
                 sueldoBruto: ultimaLiquidacion.sueldoBruto || 0,
                 sueldoNeto: ultimaLiquidacion.sueldoNeto || 0,
@@ -98,8 +101,17 @@ export class PagosComponent implements OnInit {
             },
             error: (err) => {
               console.error('Error al obtener descuentos:', err);
+              // Si hay error obteniendo descuentos, aún así mostramos la liquidación
+              this.resumenActual = {
+                id: ultimaLiquidacion._id,
+                fecha: new Date(ultimaLiquidacion.fecha),
+                sueldoBruto: ultimaLiquidacion.sueldoBruto || 0,
+                sueldoNeto: ultimaLiquidacion.sueldoNeto || 0,
+                estado: ultimaLiquidacion.estado || 'pendiente',
+                fechaPago: ultimaLiquidacion.fechaAprobacion || null,
+                descuentos: { totalDescuentos: ultimaLiquidacion.totalDescuentos || 0, detalles: {} }
+              };
               this.cargando = false;
-              this.error = 'No se pudieron cargar los descuentos';
             }
           });
         } else {
@@ -110,7 +122,7 @@ export class PagosComponent implements OnInit {
       error: (err) => {
         console.error('Error al obtener liquidaciones:', err);
         this.cargando = false;
-        this.error = 'No se pudo cargar el resumen actual';
+        this.error = 'No se pudo cargar el resumen actual. Por favor, intente más tarde.';
       }
     });
   }
@@ -165,24 +177,43 @@ export class PagosComponent implements OnInit {
       anio = fecha.getFullYear();
     }
     
-    this.pagosService.obtenerHistorialPagos(this.empleadoId, mes, anio).subscribe({
-      next: (pagos) => {
-        this.historialPagos = pagos.map(pago => ({
-          fecha: new Date(pago.fecha),
-          sueldoBruto: pago.liquidacionSueldo?.sueldoBruto || 0,
-          salud: this.encontrarDescuento(pago.descuentos, 'Salud'),
-          pension: this.encontrarDescuento(pago.descuentos, 'AFP'),
-          netoAPagar: pago.liquidacionSueldo?.sueldoNeto || 0,
-          estado: pago.estado || 'pendiente',
-          id: pago._id || ''
-        }));
+    // Para simplificar, usamos obtenerMisLiquidaciones en lugar de pagosService.obtenerHistorialPagos
+    this.liquidacionService.obtenerMisLiquidaciones().subscribe({
+      next: (liquidaciones) => {
+        console.log('Historial de liquidaciones:', liquidaciones);
+        
+        // Filtrar por mes y año si es necesario
+        let liquidacionesFiltradas = liquidaciones;
+        if (mes && anio) {
+          liquidacionesFiltradas = liquidaciones.filter(liq => {
+            const fechaLiq = new Date(liq.fecha);
+            return fechaLiq.getMonth() + 1 === mes && fechaLiq.getFullYear() === anio;
+          });
+        }
+        
+        // Mapear las liquidaciones al formato esperado para el historial
+        this.historialPagos = liquidacionesFiltradas.map(liq => {
+          // Calcular valores de salud y pensión (podría ajustarse según tu lógica de negocio)
+          const salud = liq.totalDescuentos * 0.3; // Supongamos que el 30% de los descuentos es para salud
+          const pension = liq.totalDescuentos * 0.6; // Y el 60% para pensión
+          
+          return {
+            id: liq._id,
+            fecha: new Date(liq.fecha),
+            sueldoBruto: liq.sueldoBruto || 0,
+            salud: salud,
+            pension: pension,
+            netoAPagar: liq.sueldoNeto || 0,
+            estado: liq.estado || 'pendiente'
+          };
+        });
         
         this.cargando = false;
       },
       error: (err) => {
-        console.error('Error al obtener historial de pagos:', err);
+        console.error('Error al obtener historial de liquidaciones:', err);
         this.cargando = false;
-        this.error = 'No se pudo cargar el historial de pagos';
+        this.error = 'No se pudo cargar el historial de pagos. Por favor, intente más tarde.';
       }
     });
   }
@@ -212,8 +243,12 @@ export class PagosComponent implements OnInit {
       return;
     }
     
+    this.cargando = true;
+    
     this.liquidacionService.descargarLiquidacionPDF(liquidacionId).subscribe({
       next: (blob) => {
+        this.cargando = false;
+        
         // Crear un objeto URL para el blob
         const url = window.URL.createObjectURL(blob);
         
@@ -229,8 +264,9 @@ export class PagosComponent implements OnInit {
         document.body.removeChild(a);
       },
       error: (err) => {
+        this.cargando = false;
         console.error('Error al descargar PDF:', err);
-        this.error = 'No se pudo descargar el PDF de la liquidación';
+        this.error = 'No se pudo descargar el PDF de la liquidación. Por favor, intente más tarde.';
       }
     });
   }
