@@ -103,6 +103,35 @@ app.get('/', (req, res) => {
   res.send('API de PersonalPay funcionando correctamente');
 });
 
+
+const swaggerUi = require('swagger-ui-express');
+const swaggerJsdoc = require('swagger-jsdoc');
+
+const swaggerDefinition = {
+  openapi: '3.0.0',
+  info: {
+    title: 'API de PersonalPay',
+    version: '1.0.1',
+    description: 'Documentación de la API de PersonalPay',
+  },
+  servers: [
+    {
+      url: `http://localhost:${PORT}`,
+    },
+  ],
+};
+
+const options = {
+  swaggerDefinition,
+  apis: ['/Backend/src/Controller/*.js'], // Ajusta la ruta a tus controladores
+};
+
+const swaggerSpec = swaggerJsdoc(options);
+
+// Agrega la ruta Swagger
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+
 /**
  * Iniciar el servidor
  */

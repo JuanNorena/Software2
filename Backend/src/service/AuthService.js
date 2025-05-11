@@ -135,14 +135,10 @@ class AuthService {
           empresa: empleado.empresa
         };
         
-        // Registrar entrada del empleado
-        try {
-          await AsistenciaService.registrarEntrada(empleado._id);
-          console.log(`Entrada registrada para empleado: ${empleado._id}`);
-        } catch (asistenciaError) {
-          console.error(`Error al registrar entrada: ${asistenciaError.message}`);
-          // No interrumpimos el login si falla el registro de asistencia
-        }
+        // IMPORTANTE: Se elimina el registro automático de entrada
+        // para que el empleado pueda registrarlo manualmente
+        console.log(`No se registra entrada automática para empleado: ${empleado._id}`);
+        
       }
     }
   

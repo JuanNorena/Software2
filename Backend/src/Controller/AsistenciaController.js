@@ -287,4 +287,64 @@ router.get('/empleado/:empleadoId/detalle', authenticateUser, authorizeRoles(['A
   }
 }));
 
+// Añadir estas dos nuevas rutas justo antes de las rutas de "/entrada/:empleadoId" y "/salida/:empleadoId":
+
+/**
+ * @description Permite a un empleado registrar su propia entrada
+ * @route POST /api/asistencia/mi-entrada
+ * @access Empleado
+ * @returns {Object} Registro de asistencia creado
+ */
+router.post('/mi-entrada', authenticateUser, asyncHandler(async (req, res) => {
+  try {
+    // Verificar si el usuario es un empleado
+    if (!req.user.empleadoId) {
+      return res.status(403).json({ message: 'Acceso denegado. Usuario no es un empleado.' });
+    }
+    
+    // Utilizamos el ID del empleado desde el token autenticado
+    const empleadoId = req.user.empleadoId;
+    
+    console.log(`Empleado ${empleadoId} intentando registrar su entrada manualmente`);
+    
+    const registro = await AsistenciaService.registrarEntrada(empleadoId);
+    res.status(201).json({
+      message: 'Entrada registrada exitosamente',
+      registro
+    });
+  } catch (error) {
+    console.error('Error al registrar entrada:', error);
+    res.status(400).json({ message: error.message });
+  }
+}));
+
+/**
+ * @description Permite a un empleado registrar su propia salida
+ * @route POST /api/asistencia/mi-salida
+ * @access Empleado
+ * @returns {Object} Registro de asistencia actualizado
+ */
+router.post('/mi-salida', authenticateUser, asyncHandler(async (req, res) => {
+  try {
+    // Verificar si el usuario es un empleado
+    if (!req.user.empleadoId) {
+      return res.status(403).json({ message: 'Acceso denegado. Usuario no es un empleado.' });
+    }
+    
+    // Utilizamos el ID del empleado desde el token autenticado
+    const empleadoId = req.user.empleadoId;
+    
+    console.log(`Empleado ${empleadoId} intentando registrar su salida manualmente`);
+    
+    const registro = await AsistenciaService.registrarSalida(empleadoId);
+    res.status(200).json({
+      message: 'Salida registrada exitosamente',
+      registro
+    });
+  } catch (error) {
+    console.error('Error al registrar salida:', error);
+    res.status(400).json({ message: error.message });
+  }
+}));
+
 module.exports = router;

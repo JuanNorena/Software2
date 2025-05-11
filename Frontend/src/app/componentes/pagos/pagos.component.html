@@ -1,0 +1,155 @@
+<div class="pagos-container">
+  <h2 class="titulo">Pagos y liquidaciones</h2>
+  
+  <!-- Datos del empleado y fecha actual -->
+  <div class="nombre-empleado">
+    <span>{{nombreEmpleado}}</span>
+  </div>
+  
+  <div class="fecha-actual">
+    <span class="icono-calendario">📅</span>
+    <span>{{fechaActual | date: 'dd/MM/yyyy h:mm a'}}</span>
+  </div>
+  
+  <!-- Resumen del mes actual -->
+  <div class="seccion-resumen">
+    <h3 class="subtitulo">Resumen del mes Actual</h3>
+    
+    <div *ngIf="cargando" class="cargando-contenedor">
+      <div class="spinner"></div>
+      <p>Cargando datos...</p>
+    </div>
+    
+    <div *ngIf="error" class="error-mensaje">
+      <p>{{error}}</p>
+    </div>
+    
+    <div *ngIf="!cargando && !error && resumenActual" class="resumen-contenido">
+      <div class="detalle-item">
+        <span class="detalle-label">Sueldo Bruto:</span>
+        <span class="detalle-valor">{{formatoMoneda(resumenActual.sueldoBruto)}}</span>
+      </div>
+      
+      <div class="detalle-seccion">
+        <span class="detalle-seccion-titulo">Deducciones:</span>
+        
+        <ng-container *ngIf="resumenActual.descuentos && resumenActual.descuentos.detalles">
+          <div *ngFor="let item of objectKeys(resumenActual.descuentos.detalles)" class="detalle-item detalle-item-indentado">
+            <span class="detalle-label">{{item}}:</span>
+            <span class="detalle-valor">{{formatoMoneda(resumenActual.descuentos.detalles[item])}}</span>
+          </div>
+        </ng-container>
+        
+        <div *ngIf="!resumenActual.descuentos?.detalles || objectKeys(resumenActual.descuentos.detalles).length === 0" class="detalle-item detalle-item-indentado">
+          <span class="detalle-label">No hay deducciones registradas</span>
+        </div>
+      </div>
+      
+      <div class="detalle-item">
+        <span class="detalle-label">Retenciones:</span>
+        <span class="detalle-valor">{{formatoMoneda((resumenActual.descuentos?.totalDescuentos || 0) - 
+          (resumenActual.descuentos?.detalles?.['Salud (7%)'] || 0) - 
+          (resumenActual.descuentos?.detalles?.['Pensión (AFP)'] || 0))}}</span>
+      </div>
+      
+      <div class="detalle-item neto-pagar">
+        <span class="detalle-label">Neto a Pagar:</span>
+        <span class="detalle-valor">{{formatoMoneda(resumenActual.sueldoNeto)}}</span>
+      </div>
+      
+      <div class="detalle-item">
+        <span class="detalle-label">Fecha de Pago:</span>
+        <span class="detalle-valor">{{resumenActual.fechaPago ? (resumenActual.fechaPago | date: 'dd de MMMM yyyy') : 'Pendiente'}}</span>
+      </div>
+      
+      <div class="detalle-item">
+        <span class="detalle-label">Estado:</span>
+        <span class="detalle-valor estado-pago" [ngClass]="{
+          'estado-aprobado': resumenActual.estado === 'aprobado',
+          'estado-pagado': resumenActual.estado === 'pagado',
+          'estado-pendiente': resumenActual.estado === 'pendiente',
+          'estado-rechazado': resumenActual.estado === 'rechazado'
+        }">
+          <span class="dot" [ngClass]="{
+            'dot-aprobado': resumenActual.estado === 'aprobado',
+            'dot-pagado': resumenActual.estado === 'pagado',
+            'dot-pendiente': resumenActual.estado === 'pendiente',
+            'dot-rechazado': resumenActual.estado === 'rechazado'
+          }"></span>
+          <span>{{resumenActual.estado | titlecase}}</span>
+        </span>
+      </div>
+    </div>
+    
+    <div *ngIf="!cargando && !error && !resumenActual" class="sin-datos">
+      <p>No se encontró información de liquidación para el mes actual.</p>
+    </div>
+  </div>
+  
+  <!-- Historial de pagos -->
+  <div class="seccion-historial">
+    <h3 class="subtitulo">Historial de Pagos</h3>
+    
+    <div class="filtro-container">
+      <span class="icono-calendario">📅</span>
+      <span>Filtrar por mes</span>
+      <input type="month" [(ngModel)]="mesFiltro" class="input-mes">
+      <button class="btn-filtrar" (click)="filtrarPorMes()">Consultar</button>
+    </div>
+    
+    <div *ngIf="cargando" class="cargando-contenedor">
+      <div class="spinner"></div>
+      <p>Cargando datos...</p>
+    </div>
+    
+    <div *ngIf="error" class="error-mensaje">
+      <p>{{error}}</p>
+    </div>
+    
+    <div class="tabla-container">
+      <table class="tabla-pagos">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Sueldo Bruto</th>
+            <th>Salud</th>
+            <th>Pensión</th>
+            <th>Neto Pagado</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let pago of historialPagos">
+            <td>{{pago.fecha | date: 'dd/MM/yyyy'}}</td>
+            <td>{{formatoMoneda(pago.sueldoBruto)}}</td>
+            <td>{{formatoMoneda(pago.salud)}}</td>
+            <td>{{formatoMoneda(pago.pension)}}</td>
+            <td>{{formatoMoneda(pago.netoAPagar)}}</td>
+            <td>
+              <div class="estado-cell">
+                <span class="dot" [ngClass]="{
+                  'dot-aprobado': pago.estado === 'aprobado',
+                  'dot-pagado': pago.estado === 'pagado',
+                  'dot-pendiente': pago.estado === 'pendiente'
+                }"></span>
+                <span>{{pago.estado | titlecase}}</span>
+              </div>
+            </td>
+            <td>
+              <button class="btn-accion" (click)="descargarPDF(pago.id)" title="Descargar PDF">
+                <div class="btn-descarga">
+                  <span class="icono-descarga">📄</span>
+                  <span class="texto-descarga">PDF</span>
+                </div>
+              </button>
+            </td>
+          </tr>
+          <tr *ngIf="!cargando && !error && historialPagos.length === 0">
+            <td colspan="7" class="sin-datos-tabla">No hay pagos registrados en este período</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
