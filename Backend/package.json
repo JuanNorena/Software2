@@ -26,7 +26,9 @@
     "node-schedule": "^2.1.1",
     "nodemailer": "^6.9.7",
     "pdfkit": "^0.16.0",
-    "resend": "^4.2.0"
+    "resend": "^4.2.0",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"

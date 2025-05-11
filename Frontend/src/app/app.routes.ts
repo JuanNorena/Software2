@@ -11,8 +11,15 @@ export const routes: Routes = [
   { path: 'verificar-codigo', loadComponent: () => import('./componentes/verificar-codigo/verificar-codigo.component').then(m => m.VerificarCodigoComponent) },
   { path: 'cambiar-password', loadComponent: () => import('./componentes/cambiar-password/cambiar-password.component').then(m => m.CambiarPasswordComponent) },
 
-  // Registro con guard
+  // Rutas para ADMIN
   { path: 'registro', loadComponent: () => import('./componentes/registro/registro.component').then(m => m.RegistroComponent), canActivate: [RoleGuard] },
+  // { path: 'control-asistencia', loadComponent: () => import('./componentes/control-asistencia/control-asistencia.component').then(m => m.ControlAsistenciaComponent), canActivate: [RoleGuard] },
+  { path: 'liquidaciones', loadComponent: () => import('./componentes/liquidaciones-admin/liquidaciones-admin.component').then(m => m.LiquidacionesAdminComponent), canActivate: [RoleGuard] },
+
+  // // Rutas para EMPLEADO
+  // { path: 'perfil', loadComponent: () => import('./componentes/perfil/perfil.component').then(m => m.PerfilComponent) },
+  { path: 'pagos', loadComponent: () => import('./componentes/pagos/pagos.component').then(m => m.PagosComponent) },
+  { path: 'asistencia', loadComponent: () => import('./componentes/asistencia/asistencia.component').then(m => m.AsistenciaComponent) },
 
   // Rutas por defecto
   { path: '', redirectTo: '/login', pathMatch: 'full' },

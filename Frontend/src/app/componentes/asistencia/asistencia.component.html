@@ -1,0 +1,126 @@
+<div class="container-asistencia">
+  <h2 class="titulo">Consulta de Asistencia</h2>
+  
+  <!-- Nombre del empleado -->
+  <div class="nombre-empleado">
+    <span>{{nombreEmpleado}}</span>
+  </div>
+  
+  <!-- Buscador de asistencias -->
+  <div class="buscador">
+    <div class="input-group">
+      <span class="icon-search">🔍</span>
+      <input type="month" [(ngModel)]="mesFiltro" class="input-mes" placeholder="Consultar Asistencias">
+      <button class="btn-filtrar" (click)="filtrarPorMes()">Consultar Asistencias</button>
+    </div>
+  </div>
+  
+  <!-- Leyendas y estado actual -->
+  <div class="estado-container">
+    <div class="leyenda-estados">
+      <div class="item-estado">
+        <span class="dot en-jornada"></span>
+        <span>En Jornada</span>
+      </div>
+      <div class="item-estado">
+        <span class="dot asistio"></span>
+        <span>Asistió</span>
+      </div>
+      <div class="item-estado">
+        <span class="dot ausente"></span>
+        <span>Ausente</span>
+      </div>
+    </div>
+    
+    <div class="estado-actual">
+      <h3>Estado Actual:</h3>
+      <div class="estado-info">
+        <span class="dot" [ngClass]="{
+          'en-jornada': estadoActual === 'En Jornada',
+          'asistio': estadoActual === 'Asistió',
+          'ausente': estadoActual === 'Ausente'
+        }"></span>
+        <span class="texto-estado">{{estadoActual}}</span>
+      </div>
+      
+      <div class="hora-info">
+        <p>Hora de Entrada: <span class="valor">{{horaEntrada || 'No registrado'}}</span></p>
+        <p>Hora de Salida: <span class="valor">{{horaSalida || 'No registrado'}}</span></p>
+      </div>
+    </div>
+    
+    <!-- Gráfico de asistencia -->
+    <div class="grafico-container">
+      <h3>Gráfica Asistencia Anual</h3>
+      <div class="grafico-circular">
+        <div class="porcentaje">
+          <div class="valor-porcentaje">{{datosAsistencia.asistencia + datosAsistencia.enJornada}}</div>
+          <div class="texto-porcentaje">Asistencias</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Registrar entrada/salida -->
+  <div class="registrar-container">
+    <h3>Registrar Entrada/Salida</h3>
+    <div class="form-registro-simple">
+      <input type="text" placeholder="Número de identificación" class="input-mes">
+      <button 
+        class="btn-registrar" 
+        (click)="registrarEntradaSalida()" 
+        [disabled]="procesandoRegistro || (tieneEntradaHoy && tieneSalidaHoy)"
+        [ngClass]="{
+          'btn-entrada': !tieneEntradaHoy,
+          'btn-salida': tieneEntradaHoy && !tieneSalidaHoy,
+          'btn-disabled': tieneEntradaHoy && tieneSalidaHoy
+        }"
+      >
+        Registrar
+      </button>
+    </div>
+  </div>
+  
+  <!-- Historial de asistencias -->
+  <div class="historial">
+    <h3>Historial de Asistencias</h3>
+    <div class="filtro-mes">
+      <span>Filtrar por mes</span>
+    </div>
+    
+    <div class="tabla-container">
+      <table class="tabla-asistencias">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Hora de Entrada</th>
+            <th>Hora de Salida</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let registro of registros">
+            <td>{{registro.fecha | date: 'dd/MM/yyyy'}}</td>
+            <td>{{registro.horaEntrada || '-'}}</td>
+            <td>{{registro.horaSalida || 'Pendiente'}}</td>
+            <td>
+              <div class="estado-cell">
+                <span class="dot" [ngClass]="{
+                  'en-jornada': registro.horaEntrada && !registro.horaSalida,
+                  'asistio': registro.horaEntrada && registro.horaSalida,
+                  'ausente': !registro.horaEntrada
+                }"></span>
+                <span *ngIf="registro.horaEntrada && !registro.horaSalida">En Jornada</span>
+                <span *ngIf="registro.horaEntrada && registro.horaSalida">Asistió</span>
+                <span *ngIf="!registro.horaEntrada">Ausente</span>
+              </div>
+            </td>
+          </tr>
+          <tr *ngIf="registros.length === 0">
+            <td colspan="4" class="no-registros">No hay registros de asistencia en este período</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

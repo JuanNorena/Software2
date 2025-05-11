@@ -1,0 +1,574 @@
+<div class="liquidaciones-container">
+  <h2 class="titulo">Liquidaciónes</h2>
+  
+  <!-- Nombre del administrador -->
+  <div class="nombre-admin">
+    <span>{{nombreAdmin}}</span>
+  </div>
+  
+  <!-- Buscador de empleados -->
+  <div class="buscador-container">
+    <div class="input-group">
+      <span class="search-icon">🔍</span>
+      <input 
+        type="text" 
+        [(ngModel)]="terminoBusqueda" 
+        (input)="buscarEmpleados()" 
+        placeholder="Buscar Empleado" 
+        class="form-control search-input"
+      >
+    </div>
+  </div>
+  
+  <!-- Tabla de empleados -->
+  <div class="tabla-container">
+    <h3 class="subtitulo">Empleados</h3>
+    <table class="tabla-empleados">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Rut/CC</th>
+          <th>Fecha nacimiento</th>
+          <th>Profesión</th>
+          <th>Cargo</th>
+          <th>Tipo De Contrato, Jornada</th>
+          <th>Sueldo</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngIf="cargando">
+          <td colspan="8" class="text-center">
+            <div class="spinner-border"></div>
+            <p>Cargando empleados...</p>
+          </td>
+        </tr>
+        
+        <tr *ngIf="!cargando && empleadosFiltrados.length === 0">
+          <td colspan="8" class="text-center">
+            No se encontraron empleados
+          </td>
+        </tr>
+        
+        <tr *ngFor="let empleado of empleadosFiltrados">
+          <td>{{ empleado.nombre || 'Nombre' }}</td>
+          <td>{{ empleado.rut || 'Rut/CC' }}</td>
+          <td>{{ empleado.fechaNacimiento ? (empleado.fechaNacimiento | date: 'dd/MM/yyyy') : 'Fecha nacimiento' }}</td>
+          <td>{{ empleado.profesion || 'Profesión' }}</td>
+          <td>{{ empleado.cargo || 'Cargo' }}</td>
+          <td>{{ getTipoContrato(empleado) }}, {{ getJornada(empleado) }}</td>
+          <td>{{ formatoMoneda(empleado.sueldoBase) }}</td>
+          <td class="acciones-column">
+            <button class="btn-accion btn-liquidar" (click)="seleccionarEmpleadoParaLiquidar(empleado)">
+              Liquidar
+            </button>
+            <button class="btn-accion btn-pagar" (click)="seleccionarEmpleadoParaPagarNomina(empleado)">
+              Pagar Nómina
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  
+  <!-- Modal/Formulario para liquidar un empleado -->
+  <div class="modal" *ngIf="mostrarModalLiquidacion">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Liquidar Empleado: {{empleadoSeleccionado?.nombre}}</h3>
+        <span class="close-modal" (click)="cerrarModalLiquidacion()">&times;</span>
+      </div>
+      <div class="modal-body">
+        <div class="form-container">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="fechaInicio">Fecha De Inicio</label>
+              <input 
+                type="date" 
+                id="fechaInicio" 
+                [(ngModel)]="fechaInicio" 
+                class="form-control"
+              >
+            </div>
+            
+            <div class="form-group">
+              <label for="fechaFin">Fecha De Final Del Periodo</label>
+              <input 
+                type="date" 
+                id="fechaFin" 
+                [(ngModel)]="fechaFin" 
+                class="form-control"
+              >
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="salarioMensual">Ingrese Su Salario Mensual</label>
+              <input 
+                type="number" 
+                id="salarioMensual" 
+                [(ngModel)]="salarioMensual" 
+                class="form-control"
+                placeholder="$0"
+                [disabled]="!editarSalario"
+              >
+            </div>
+            
+            <div class="form-group">
+              <label>Tiene Derecho A Un Auxilio De Transporte</label>
+              <div class="checkbox-container">
+                <input 
+                  type="checkbox" 
+                  id="auxilioTransporte" 
+                  [(ngModel)]="auxilioTransporte" 
+                  class="form-check"
+                >
+              </div>
+            </div>
+          </div>
+          
+          <!-- Mostrar estado de liquidación si se ha generado -->
+          <div class="estado-liquidacion" *ngIf="liquidacionGenerada">
+            <p>Estado de la liquidación: <span class="estado {{liquidacionGenerada.estado}}">{{liquidacionGenerada.estado | titlecase}}</span></p>
+          </div>
+          
+          <div class="form-actions">
+            <button 
+              class="btn-liquidar-modal" 
+              (click)="generarLiquidacionIndividual()" 
+              [disabled]="procesando"
+            >
+              <span *ngIf="!procesando">Liquidar</span>
+              <span *ngIf="procesando" class="spinner-text">
+                <span class="spinner-border spinner-border-sm"></span>
+                Procesando...
+              </span>
+            </button>
+            
+            <!-- Botón de Aprobar sólo visible si la liquidación fue generada y está pendiente -->
+            <button 
+              class="btn-aprobar" 
+              *ngIf="liquidacionGenerada && liquidacionGenerada.estado === 'pendiente'"
+              (click)="aprobarLiquidacion(liquidacionGenerada._id)" 
+              [disabled]="procesandoAprobacion"
+            >
+              <span *ngIf="!procesandoAprobacion">Aprobar</span>
+              <span *ngIf="procesandoAprobacion" class="spinner-text">
+                <span class="spinner-border spinner-border-sm"></span>
+                Aprobando...
+              </span>
+            </button>
+            
+            <button class="btn-cancelar" (click)="cerrarModalLiquidacion()">Cancelar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Modal para pagar nómina -->
+  <div class="modal" *ngIf="mostrarModalPagoNomina">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Pagar Nómina: {{empleadoSeleccionado?.nombre}}</h3>
+        <span class="close-modal" (click)="cerrarModalPagoNomina()">&times;</span>
+      </div>
+      <div class="modal-body">
+        <div *ngIf="liquidacionesPendientesPago.length === 0" class="sin-liquidaciones">
+          <p>No hay liquidaciones pendientes de pago para este empleado.</p>
+        </div>
+        
+        <div *ngIf="liquidacionesPendientesPago.length > 0">
+          <div class="tabs-container">
+            <div class="tab-header">
+              <button 
+                class="tab-button" 
+                [class.active]="tabActiva === 'liquidaciones'"
+                (click)="cambiarTab('liquidaciones')"
+              >
+                Liquidaciones
+              </button>
+              <button 
+                class="tab-button" 
+                [class.active]="tabActiva === 'pago'"
+                (click)="cambiarTab('pago')"
+                [disabled]="!hayLiquidacionesSeleccionadas()"
+              >
+                Datos de Pago
+              </button>
+              <button 
+                class="tab-button" 
+                [class.active]="tabActiva === 'contabilidad'"
+                (click)="cambiarTab('contabilidad')"
+                [disabled]="!hayLiquidacionesSeleccionadas()"
+              >
+                Contabilidad Provisional
+              </button>
+            </div>
+            
+            <!-- Tab de Liquidaciones -->
+            <div class="tab-content" *ngIf="tabActiva === 'liquidaciones'">
+              <h4>Liquidaciones pendientes de pago</h4>
+              <div class="tabla-container">
+                <table class="tabla-liquidaciones">
+                  <thead>
+                    <tr>
+                      <th>Fecha</th>
+                      <th>Sueldo Bruto</th>
+                      <th>Descuentos</th>
+                      <th>Sueldo Neto</th>
+                      <th>Estado</th>
+                      <th>Acciones</th>
+                      <th>
+                        <input 
+                          type="checkbox" 
+                          [checked]="todasLiquidacionesSeleccionadas()"
+                          (change)="seleccionarTodasLiquidaciones($event)"
+                          title="Seleccionar todas"
+                        >
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let liquidacion of liquidacionesPendientesPago" 
+                        [ngClass]="{'seleccionada': liquidacion.seleccionada}">
+                      <td>{{liquidacion.fecha | date: 'dd/MM/yyyy'}}</td>
+                      <td>{{formatoMoneda(liquidacion.sueldoBruto)}}</td>
+                      <td>{{formatoMoneda(liquidacion.totalDescuentos)}}</td>
+                      <td>{{formatoMoneda(liquidacion.sueldoNeto)}}</td>
+                      <td><span class="estado {{liquidacion.estado}}">{{liquidacion.estado | titlecase}}</span></td>
+                      <td>
+                        <!-- Botones para modificar estados -->
+                        <button 
+                          *ngIf="liquidacion.estado === 'pendiente'"
+                          class="btn-mini btn-aprobar" 
+                          (click)="aprobarLiquidacion(liquidacion._id)"
+                          [disabled]="procesandoAprobacion"
+                        >
+                          Aprobar
+                        </button>
+                        
+                        <button 
+                          *ngIf="liquidacion.estado === 'pendiente'"
+                          class="btn-mini btn-rechazar" 
+                          (click)="abrirModalRechazo(liquidacion)"
+                        >
+                          Rechazar
+                        </button>
+                      </td>
+                      <td>
+                        <!-- Solo permitir seleccionar liquidaciones aprobadas -->
+                        <input 
+                          type="checkbox" 
+                          [(ngModel)]="liquidacion.seleccionada"
+                          [disabled]="liquidacion.estado !== 'aprobado'"
+                        >
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              
+              <!-- Resumen de pago nómina -->
+              <div *ngIf="getTotalLiquidacionesSeleccionadas() > 0" class="resumen-nomina">
+                <h4>Resumen de liquidaciones seleccionadas</h4>
+                <p>
+                  <span>Liquidaciones seleccionadas:</span>
+                  <span>{{getTotalLiquidacionesSeleccionadas()}}</span>
+                </p>
+                <p class="total">
+                  <span>Monto total a pagar:</span>
+                  <span>{{formatoMoneda(getMontoTotalLiquidacionesSeleccionadas())}}</span>
+                </p>
+                
+                <div class="form-actions">
+                  <button 
+                    class="btn-continuar" 
+                    (click)="cambiarTab('pago')" 
+                    [disabled]="!hayLiquidacionesSeleccionadas()"
+                  >
+                    Continuar a Datos de Pago
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Tab de Datos de Pago -->
+            <div class="tab-content" *ngIf="tabActiva === 'pago'">
+              <h4>Datos de Pago</h4>
+              <div class="resumen-nomina">
+                <p>
+                  <span>Liquidaciones a pagar:</span>
+                  <span>{{getTotalLiquidacionesSeleccionadas()}}</span>
+                </p>
+                <p class="total">
+                  <span>Monto total:</span>
+                  <span>{{formatoMoneda(getMontoTotalLiquidacionesSeleccionadas())}}</span>
+                </p>
+              </div>
+              
+              <div class="form-container">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="metodoPagoNomina">Método de pago</label>
+                    <select id="metodoPagoNomina" [(ngModel)]="metodoPagoNomina" class="form-control">
+                      <option value="deposito">Depósito</option>
+                      <option value="cheque">Cheque</option>
+                    </select>
+                  </div>
+                  
+                  <div class="form-group">
+                    <label for="bancoNomina">Banco</label>
+                    <input 
+                      type="text" 
+                      id="bancoNomina" 
+                      [(ngModel)]="bancoNomina" 
+                      class="form-control"
+                      placeholder="Nombre del banco"
+                    >
+                  </div>
+                </div>
+                
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="fechaPagoNomina">Fecha de pago</label>
+                    <input 
+                      type="date" 
+                      id="fechaPagoNomina" 
+                      [(ngModel)]="fechaPagoNomina" 
+                      class="form-control"
+                    >
+                  </div>
+                </div>
+                
+                <div class="form-actions">
+                  <button 
+                    class="btn-volver" 
+                    (click)="cambiarTab('liquidaciones')"
+                  >
+                    Volver a Liquidaciones
+                  </button>
+                  
+                  <button 
+                    class="btn-pagar-modal" 
+                    (click)="procesarPagoNomina()" 
+                    [disabled]="procesandoPagoNomina || !metodoPagoNomina || !bancoNomina || !fechaPagoNomina"
+                  >
+                    <span *ngIf="!procesandoPagoNomina">Realizar Pago de Nómina</span>
+                    <span *ngIf="procesandoPagoNomina" class="spinner-text">
+                      <span class="spinner-border spinner-border-sm"></span>
+                      Procesando...
+                    </span>
+                  </button>
+                  
+                  <button 
+                    class="btn-continuar" 
+                    (click)="cambiarTab('contabilidad')"
+                  >
+                    Continuar a Contabilidad Provisional
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Tab de Contabilidad Provisional -->
+            <div class="tab-content" *ngIf="tabActiva === 'contabilidad'">
+              <h4>Pago de Contabilidad Provisional</h4>
+              <div class="resumen-nomina">
+                <p>
+                  <span>Liquidaciones seleccionadas:</span>
+                  <span>{{getTotalLiquidacionesSeleccionadas()}}</span>
+                </p>
+                <p>
+                  <span>Monto total bruto:</span>
+                  <span>{{formatoMoneda(getMontoTotalBrutoSeleccionadas())}}</span>
+                </p>
+              </div>
+              
+              <div class="form-container">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="periodoCorrespondiente">Período correspondiente</label>
+                    <input 
+                      type="month" 
+                      id="periodoCorrespondiente" 
+                      [(ngModel)]="periodoCorrespondiente" 
+                      class="form-control"
+                    >
+                  </div>
+                </div>
+                
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="totalPagoPension">Pago para pensión</label>
+                    <input 
+                      type="number" 
+                      id="totalPagoPension" 
+                      [(ngModel)]="totalPagoPension" 
+                      class="form-control"
+                      placeholder="$0"
+                    >
+                  </div>
+                  
+                  <div class="form-group">
+                    <label for="totalPagoSalud">Pago para salud</label>
+                    <input 
+                      type="number" 
+                      id="totalPagoSalud" 
+                      [(ngModel)]="totalPagoSalud" 
+                      class="form-control"
+                      placeholder="$0"
+                    >
+                  </div>
+                </div>
+                
+                <div class="resumen-nomina">
+                  <p class="total">
+                    <span>Total provisiones:</span>
+                    <span>{{formatoMoneda(getTotalProvisiones())}}</span>
+                  </p>
+                </div>
+                
+                <div class="form-actions">
+                  <button 
+                    class="btn-volver" 
+                    (click)="cambiarTab('pago')"
+                  >
+                    Volver a Pago
+                  </button>
+                  
+                  <button 
+                    class="btn-pagar-modal btn-contabilidad" 
+                    (click)="procesarPagoProvisional()" 
+                    [disabled]="procesandoPagoProvisional || !periodoCorrespondiente || !totalPagoPension || !totalPagoSalud"
+                  >
+                    <span *ngIf="!procesandoPagoProvisional">Registrar Pago Provisional</span>
+                    <span *ngIf="procesandoPagoProvisional" class="spinner-text">
+                      <span class="spinner-border spinner-border-sm"></span>
+                      Procesando...
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Modal para cambiar estado de liquidación -->
+  <div class="modal" *ngIf="mostrarModalCambioEstado">
+    <div class="modal-content modal-sm">
+      <div class="modal-header">
+        <h3>Cambiar Estado de Liquidación</h3>
+        <span class="close-modal" (click)="cerrarModalCambioEstado()">&times;</span>
+      </div>
+      <div class="modal-body">
+        <div class="form-container">
+          <div class="form-group">
+            <label for="nuevoEstado">Seleccione el nuevo estado</label>
+            <select id="nuevoEstado" [(ngModel)]="nuevoEstado" class="form-control">
+              <option value="pendiente">Pendiente</option>
+              <option value="aprobado">Aprobado</option>
+              <option value="rechazado">Rechazado</option>
+            </select>
+          </div>
+          
+          <div class="form-group" *ngIf="nuevoEstado === 'rechazado'">
+            <label for="motivoRechazo">Motivo del rechazo</label>
+            <textarea 
+              id="motivoRechazo" 
+              [(ngModel)]="motivoRechazo" 
+              class="form-control" 
+              rows="3"
+              placeholder="Ingrese el motivo del rechazo"
+            ></textarea>
+          </div>
+          
+          <div class="form-actions">
+            <button 
+              class="btn-liquidar-modal" 
+              (click)="confirmarCambioEstado()" 
+              [disabled]="procesandoCambioEstado || (nuevoEstado === 'rechazado' && !motivoRechazo)"
+            >
+              <span *ngIf="!procesandoCambioEstado">Confirmar</span>
+              <span *ngIf="procesandoCambioEstado" class="spinner-text">
+                <span class="spinner-border spinner-border-sm"></span>
+                Procesando...
+              </span>
+            </button>
+            <button class="btn-cancelar" (click)="cerrarModalCambioEstado()">Cancelar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Modal para rechazar una liquidación -->
+  <div class="modal" *ngIf="mostrarModalRechazo">
+    <div class="modal-content modal-sm">
+      <div class="modal-header">
+        <h3>Rechazar Liquidación</h3>
+        <span class="close-modal" (click)="cerrarModalRechazo()">&times;</span>
+      </div>
+      <div class="modal-body">
+        <div class="form-container">
+          <div class="form-group">
+            <label for="motivoRechazo">Motivo del rechazo</label>
+            <textarea 
+              id="motivoRechazo" 
+              [(ngModel)]="motivoRechazo" 
+              class="form-control" 
+              rows="4"
+              placeholder="Ingrese el motivo del rechazo"
+            ></textarea>
+          </div>
+          
+          <div class="form-actions">
+            <button 
+              class="btn-rechazar-modal" 
+              (click)="rechazarLiquidacion()" 
+              [disabled]="procesandoRechazo || !motivoRechazo"
+            >
+              <span *ngIf="!procesandoRechazo">Confirmar Rechazo</span>
+              <span *ngIf="procesandoRechazo" class="spinner-text">
+                <span class="spinner-border spinner-border-sm"></span>
+                Procesando...
+              </span>
+            </button>
+            <button class="btn-cancelar" (click)="cerrarModalRechazo()">Cancelar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Notificación de éxito -->
+  <div class="notification success" *ngIf="mostrarNotificacionExito">
+    <div class="notification-content">
+      <span class="notification-icon">✓</span>
+      <span class="notification-message">{{mensajeExito}}</span>
+      <span class="notification-close" (click)="cerrarNotificacion()">×</span>
+    </div>
+  </div>
+  
+  <!-- Notificación de error -->
+  <div class="notification error" *ngIf="mostrarNotificacionError">
+    <div class="notification-content">
+      <span class="notification-icon">⚠</span>
+      <span class="notification-message">{{mensajeError}}</span>
+      <span class="notification-close" (click)="cerrarNotificacion()">×</span>
+    </div>
+  </div>
+  
+  <!-- Mensajes de error o éxito -->
+  <div *ngIf="error" class="alert alert-danger">
+    {{ error }}
+  </div>
+  
+  <div *ngIf="mensaje" class="alert alert-success">
+    {{ mensaje }}
+  </div>
+</div>
